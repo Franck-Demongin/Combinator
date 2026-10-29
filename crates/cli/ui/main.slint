@@ -139,7 +139,7 @@ export component MainWindow inherits Window {
                     height: 48px;
                     width: parent.width;
                     opacity: drag.dragging ? 0.5 : 1.0;
-                    background: drop.has-drag ? #1a305030 : transparent;
+                    background: drop.has-drag ? #1a305030 : (Math.mod(index, 2) == 1 ? Palette.alternate-background : Palette.background);
                     border-color: drop.has-drag ? #1a305060 : transparent;
                     border-width: drop.has-drag ? 1px : 0px;
                     border-radius: 4px;
