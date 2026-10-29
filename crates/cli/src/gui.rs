@@ -177,7 +177,7 @@ fn register_source_actions(
                     set_source_list(&ui, current);
                     if added == 0 {
                         toaster_directory.show(
-                            format!("Aucune source supportee dans {}.", archive_path.display()),
+                            format!("Aucune source supportée dans {}.", archive_path.display()),
                             ToastLevel::Warning,
                         );
                     }
@@ -287,7 +287,7 @@ fn register_output_actions(
         let raw = output_path.as_str();
         if raw.trim().is_empty() {
             open_file_toaster.show(
-                "Aucun fichier de sortie selectionne.".to_owned(),
+                "Aucun fichier de sortie sélectionné.".to_owned(),
                 ToastLevel::Warning,
             );
             return;
@@ -311,7 +311,7 @@ fn register_output_actions(
         let raw = output_path.as_str();
         if raw.trim().is_empty() {
             open_folder_toaster.show(
-                "Aucun fichier de sortie selectionne.".to_owned(),
+                "Aucun fichier de sortie sélectionné.".to_owned(),
                 ToastLevel::Warning,
             );
             return;
@@ -383,7 +383,7 @@ fn register_generation(ui: &MainWindow, toaster: Toaster) {
             .map(PathBuf::from)
             .collect::<Vec<_>>();
         if inputs.is_empty() {
-            toaster.show("Aucune source selectionnee.", ToastLevel::Warning);
+            toaster.show("Aucune source sélectionnée.", ToastLevel::Warning);
             return;
         }
 
@@ -393,7 +393,7 @@ fn register_generation(ui: &MainWindow, toaster: Toaster) {
         ui.set_busy(true);
         ui.set_output_ready(false);
         ui.set_progress(0.0);
-        ui.set_status_text("Demarrage...".into());
+        ui.set_status_text("Démarrage...".into());
 
         let worker_ui = ui_weak.clone();
         let (result_tx, result_rx) =
@@ -457,7 +457,7 @@ fn schedule_generation_result(
                             ui.set_progress(1.0);
                             ui.set_status_text(
                                 format!(
-                                    "PDF genere : {} ({} sources, {} planches)",
+                                    "PDF généré : {} ({} sources, {} planches)",
                                     summary.output.display(),
                                     summary.source_count,
                                     summary.board_count
@@ -467,13 +467,15 @@ fn schedule_generation_result(
                             ui.set_output_ready(true);
                             toaster.show(
                                 format!(
-                                    "PDF genere : {} sources, {} planches.",
+                                    "PDF généré : {} sources, {} planches.",
                                     summary.source_count, summary.board_count
                                 ),
                                 ToastLevel::Success,
                             );
                         }
                         Err(message) => {
+                            let message = message
+                                .replace("(utilisez --force)", "(cochez « Forcer l'écrasement »)");
                             ui.set_output_ready(false);
                             ui.set_report_text(String::new().into());
                             ui.set_status_text(message.clone().into());
@@ -489,7 +491,7 @@ fn schedule_generation_result(
                 if let Some(ui) = ui_weak.upgrade() {
                     ui.set_busy(false);
                     ui.set_output_ready(false);
-                    ui.set_status_text("Generation interrompue.".into());
+                    ui.set_status_text("Génération interrompue.".into());
                 }
             }
         }

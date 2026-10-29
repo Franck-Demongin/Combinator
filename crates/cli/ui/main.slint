@@ -35,7 +35,7 @@ export component MainWindow inherits Window {
     in-out property <bool> force-overwrite: false;
     in-out property <bool> busy: false;
     in-out property <float> progress: 0.0;
-    in-out property <string> status-text: "Pret.";
+    in-out property <string> status-text: "Prêt.";
     in-out property <bool> output-ready: false;
     in property <string> report-text: "";
 
@@ -260,7 +260,7 @@ export component MainWindow inherits Window {
             spacing: Layout.gap;
 
             CheckBox {
-                text: "Forcer l'ecrasement";
+                text: "Forcer l'écrasement";
                 checked <=> root.force-overwrite;
                 enabled: !root.busy;
             }
@@ -316,7 +316,7 @@ export component MainWindow inherits Window {
             }
 
             Button {
-                text: "Generer";
+                text: "Générer";
                 icon: @image-url("../../../assets/icons/ui/document-save.svg");
                 icon-size: 16px;
                 colorize-icon: true;
