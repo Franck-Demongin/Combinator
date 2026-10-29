@@ -138,7 +138,7 @@ export component MainWindow inherits Window {
                 icon: @image-url("../../../assets/icons/ui/delete.svg");
                 icon-size: 16px;
                 colorize-icon: true;
-                enabled: !root.busy;
+                enabled: !root.busy && root.source-items.length > 0;
                 clicked => { root.clear-sources(); }
             }
         }
