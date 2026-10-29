@@ -5,6 +5,8 @@ export { ToastTiming, ToastState } from "toast/toast.slint";
 export struct SourceItem {
     path: string,
     name: string,
+    display-name: string,
+    display-path: string,
 }
 
 export global SourceTransfer {
@@ -189,13 +191,13 @@ export component MainWindow inherits Window {
                                 horizontal-stretch: 1;
 
                                 Text {
-                                    text: item.name;
+                                    text: item.display-name;
                                     font-size: 14px;
                                     font-weight: 600;
                                 }
 
                                 Text {
-                                    text: item.path;
+                                    text: item.display-path;
                                     font-size: 11px;
                                     color: Palette.foreground;
                                 }

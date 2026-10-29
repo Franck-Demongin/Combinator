@@ -461,11 +461,62 @@ fn set_source_list(ui: &MainWindow, sources: Vec<String>) {
                 .and_then(|os| os.to_str())
                 .unwrap_or(path.as_str())
                 .to_owned();
+            let directory = std::path::Path::new(&path)
+                .parent()
+                .map(|parent| parent.to_string_lossy().to_string())
+                .unwrap_or_default();
+            let mut directory = if directory.is_empty() {
+                ".".to_owned()
+            } else {
+                directory
+            };
+            if !directory.ends_with(std::path::MAIN_SEPARATOR) {
+                directory.push(std::path::MAIN_SEPARATOR);
+            }
             SourceItem {
-                path: path.into(),
-                name: name.into(),
+                path: path.clone().into(),
+                name: name.clone().into(),
+                display_name: truncate_filename(&name, 50).into(),
+                display_path: truncate_path(&directory, 75).into(),
             }
         })
         .collect();
     ui.set_source_items(ModelRc::new(VecModel::from(items)));
+}
+
+fn truncate_filename(text: &str, max: usize) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    if chars.len() <= max {
+        return text.to_owned();
+    }
+
+    if let Some(dot_index) = text.rfind('.') {
+        let extension: String = text[dot_index..].chars().collect();
+        let extension_chars = extension.chars().count();
+        let stem_limit = max.saturating_sub(extension_chars).saturating_sub(3);
+        if stem_limit > 0 && extension_chars + 4 <= max {
+            let stem: String = text[..dot_index].chars().take(stem_limit).collect();
+            return format!("{stem}...{extension}");
+        }
+    }
+
+    let limit = max.saturating_sub(3);
+    format!("{}...", chars.into_iter().take(limit).collect::<String>())
+}
+
+fn truncate_path(text: &str, max: usize) -> String {
+    let chars: Vec<char> = text.chars().collect();
+    if chars.len() <= max {
+        return text.to_owned();
+    }
+    if max <= 3 {
+        return ".".repeat(max);
+    }
+
+    let kept = max - 3;
+    let left_count = kept / 2;
+    let right_count = kept - left_count;
+    let left: String = chars[..left_count].iter().collect();
+    let right: String = chars[chars.len() - right_count..].iter().collect();
+    format!("{left}...{right}")
 }
