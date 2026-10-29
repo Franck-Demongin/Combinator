@@ -7,7 +7,9 @@ use slint::ComponentHandle;
 use slint::Model;
 use slint::ModelRc;
 use slint::VecModel;
+use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -31,8 +33,8 @@ pub fn run() -> Result<()> {
 
     let toaster = Toaster::install(&ui);
 
-    register_source_actions(&ui);
-    register_output_actions(&ui);
+    register_source_actions(&ui, toaster.clone());
+    register_output_actions(&ui, toaster.clone());
     register_generation(&ui, toaster);
 
     ui.run()
@@ -40,8 +42,9 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
-fn register_source_actions(ui: &MainWindow) {
+fn register_source_actions(ui: &MainWindow, toaster: Toaster) {
     let weak = ui.as_weak();
+    let toaster_files = toaster.clone();
 
     ui.on_add_files(move || {
         if let Some(ui) = weak.upgrade() {
@@ -53,30 +56,84 @@ fn register_source_actions(ui: &MainWindow) {
                 .add_filter("Sources", SUPPORTED_EXTENSIONS)
                 .pick_files()
             {
+                let mut skipped = 0;
                 for path in paths {
+                    let extension = path
+                        .extension()
+                        .and_then(|ext| ext.to_str())
+                        .map(|ext| ext.to_lowercase())
+                        .unwrap_or_default();
+                    if !SUPPORTED_EXTENSIONS.contains(&extension.as_str()) {
+                        skipped += 1;
+                        continue;
+                    }
                     let text = path.display().to_string();
                     if !current.contains(&text) {
                         current.push(text);
                     }
                 }
                 set_source_list(&ui, current);
+                if skipped > 0 {
+                    toaster_files.show(
+                        format!("{skipped} fichier(s) non supporté(s) ignoré(s)."),
+                        ToastLevel::Warning,
+                    );
+                }
             }
         }
     });
 
     let weak = ui.as_weak();
+    let toaster_directory = toaster.clone();
     ui.on_add_directory(move || {
         if let Some(ui) = weak.upgrade() {
             if ui.get_busy() {
                 return;
             }
+            let Some(folder) = FileDialog::new().pick_folder() else {
+                return;
+            };
+
             let mut current = source_list(&ui);
-            if let Some(path) = FileDialog::new().pick_folder() {
-                let text = path.display().to_string();
-                if !current.contains(&text) {
-                    current.push(text);
+            let mut added = 0;
+            match combinator_core::expand_directory(&folder) {
+                Ok(files) => {
+                    for path in files {
+                        let text = path.display().to_string();
+                        if !current.contains(&text) {
+                            current.push(text);
+                            added += 1;
+                        }
+                    }
+                    set_source_list(&ui, current);
+                    let skipped = std::fs::read_dir(&folder)
+                        .ok()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(Result::ok)
+                        .filter(|entry| {
+                            let path = entry.path();
+                            path.is_file() && !combinator_core::is_supported_path(&path)
+                        })
+                        .count();
+                    if skipped > 0 {
+                        toaster_directory.show(
+                            format!(
+                                "{skipped} fichier(s) non supporté(s) ignoré(s) dans le dossier."
+                            ),
+                            ToastLevel::Warning,
+                        );
+                    }
+                    if added == 0 {
+                        toaster_directory.show(
+                            format!("Aucune source supportée dans {}.", folder.display()),
+                            ToastLevel::Warning,
+                        );
+                    }
                 }
-                set_source_list(&ui, current);
+                Err(error) => {
+                    toaster_directory.show(error.to_string(), ToastLevel::Error);
+                }
             }
         }
     });
@@ -91,7 +148,7 @@ fn register_source_actions(ui: &MainWindow) {
     });
 }
 
-fn register_output_actions(ui: &MainWindow) {
+fn register_output_actions(ui: &MainWindow, toaster: Toaster) {
     let weak = ui.as_weak();
     ui.on_choose_output(move || {
         if let Some(ui) = weak.upgrade() {
@@ -115,29 +172,27 @@ fn register_output_actions(ui: &MainWindow) {
     });
 
     let weak = ui.as_weak();
-    ui.on_choose_report(move || {
-        if let Some(ui) = weak.upgrade() {
-            if ui.get_busy() {
-                return;
-            }
-            let current = ui.get_report_path();
-            let default_name = if current.is_empty() {
-                "combinator-report.json".to_owned()
-            } else {
-                PathBuf::from(current.as_str())
-                    .file_name()
-                    .map(|name| name.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "combinator-report.json".to_owned())
-            };
+    let open_file_toaster = toaster.clone();
+    ui.on_open_output_file(move || {
+        let Some(ui) = weak.upgrade() else {
+            return;
+        };
+        let path = PathBuf::from(ui.get_output_path().as_str());
+        if let Err(error) = open_path(&path) {
+            open_file_toaster.show(error.to_string(), ToastLevel::Error);
+        }
+    });
 
-            if let Some(path) = FileDialog::new()
-                .add_filter("JSON", &["json"])
-                .set_file_name(&default_name)
-                .save_file()
-            {
-                ui.set_report_path(path.display().to_string().into());
-                ui.set_report_enabled(true);
-            }
+    let weak = ui.as_weak();
+    let open_folder_toaster = toaster.clone();
+    ui.on_open_output_folder(move || {
+        let Some(ui) = weak.upgrade() else {
+            return;
+        };
+        let path = PathBuf::from(ui.get_output_path().as_str());
+        let folder = path.parent().unwrap_or_else(|| Path::new("."));
+        if let Err(error) = open_path(folder) {
+            open_folder_toaster.show(error.to_string(), ToastLevel::Error);
         }
     });
 }
@@ -163,14 +218,10 @@ fn register_generation(ui: &MainWindow, toaster: Toaster) {
         }
 
         let output = PathBuf::from(ui.get_output_path().as_str());
-        let report_path = if ui.get_report_enabled() && !ui.get_report_path().is_empty() {
-            Some(PathBuf::from(ui.get_report_path().as_str()))
-        } else {
-            None
-        };
         let force = ui.get_force_overwrite();
 
         ui.set_busy(true);
+        ui.set_output_ready(false);
         ui.set_progress(0.0);
         ui.set_status_text("Demarrage...".into());
 
@@ -186,7 +237,7 @@ fn register_generation(ui: &MainWindow, toaster: Toaster) {
                 generate_collected(
                     &files,
                     &output,
-                    report_path.as_deref(),
+                    None,
                     force,
                     &mut |update: ProgressUpdate| {
                         let progress_ui = progress_ui.clone();
@@ -221,6 +272,7 @@ fn schedule_generation_result(
                     ui.set_busy(false);
                     match result {
                         Ok(summary) => {
+                            ui.set_output_path(summary.output.display().to_string().into());
                             ui.set_progress(1.0);
                             ui.set_status_text(
                                 format!(
@@ -231,6 +283,7 @@ fn schedule_generation_result(
                                 )
                                 .into(),
                             );
+                            ui.set_output_ready(true);
                             toaster.show(
                                 format!(
                                     "PDF genere : {} sources, {} planches.",
@@ -240,6 +293,7 @@ fn schedule_generation_result(
                             );
                         }
                         Err(message) => {
+                            ui.set_output_ready(false);
                             ui.set_status_text(message.clone().into());
                             toaster.show(message, ToastLevel::Error);
                         }
@@ -252,11 +306,35 @@ fn schedule_generation_result(
             Err(mpsc::TryRecvError::Disconnected) => {
                 if let Some(ui) = ui_weak.upgrade() {
                     ui.set_busy(false);
+                    ui.set_output_ready(false);
                     ui.set_status_text("Generation interrompue.".into());
                 }
             }
         }
     });
+}
+
+fn open_path(path: &Path) -> Result<()> {
+    let command = if cfg!(target_os = "windows") {
+        "cmd"
+    } else if cfg!(target_os = "macos") {
+        "open"
+    } else {
+        "xdg-open"
+    };
+
+    let mut process = Command::new(command);
+    if cfg!(target_os = "windows") {
+        process.args(["/C", "start", ""]).arg(path);
+    } else {
+        process.arg(path);
+    }
+
+    let child = process
+        .spawn()
+        .map_err(|error| anyhow::anyhow!("impossible d'ouvrir {}: {error}", path.display()))?;
+    let _ = child;
+    Ok(())
 }
 
 fn source_list(ui: &MainWindow) -> Vec<String> {

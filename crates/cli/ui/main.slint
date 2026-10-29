@@ -20,12 +20,11 @@ export component MainWindow inherits Window {
 
     in-out property <[string]> source-items;
     in-out property <string> output-path: "combinator.pdf";
-    in-out property <string> report-path: "";
     in-out property <bool> force-overwrite: false;
-    in-out property <bool> report-enabled: false;
     in-out property <bool> busy: false;
     in-out property <float> progress: 0.0;
     in-out property <string> status-text: "Pret.";
+    in-out property <bool> output-ready: false;
 
     callback show-success();
     callback show-warning();
@@ -34,8 +33,9 @@ export component MainWindow inherits Window {
     callback add-directory();
     callback clear-sources();
     callback choose-output();
-    callback choose-report();
     callback generate();
+    callback open-output-file();
+    callback open-output-folder();
 
     VerticalBox {
         padding: Layout.padding;
@@ -119,33 +119,6 @@ export component MainWindow inherits Window {
                 checked <=> root.force-overwrite;
                 enabled: !root.busy;
             }
-
-            CheckBox {
-                text: "Rapport";
-                checked <=> root.report-enabled;
-                enabled: !root.busy;
-            }
-        }
-
-        HorizontalBox {
-            spacing: Layout.gap;
-
-            Text {
-                text: "Rapport";
-                vertical-alignment: center;
-            }
-
-            LineEdit {
-                horizontal-stretch: 1;
-                text <=> root.report-path;
-                enabled: !root.busy && root.report-enabled;
-            }
-
-            Button {
-                text: "Parcourir";
-                enabled: !root.busy && root.report-enabled;
-                clicked => { root.choose-report(); }
-            }
         }
 
         ProgressIndicator {
@@ -165,8 +138,27 @@ export component MainWindow inherits Window {
             Button {
                 text: "Generer";
                 primary: true;
-                enabled: !root.busy;
+                enabled: !root.busy && root.source-items.length > 0;
                 clicked => { root.generate(); }
+            }
+        }
+
+        HorizontalBox {
+            alignment: end;
+            spacing: Layout.gap;
+
+            Button {
+                text: "Ouvrir le fichier";
+                visible: root.output-ready;
+                enabled: root.output-ready;
+                clicked => { root.open-output-file(); }
+            }
+
+            Button {
+                text: "Ouvrir le dossier";
+                visible: root.output-ready;
+                enabled: root.output-ready;
+                clicked => { root.open-output-folder(); }
             }
         }
     }
