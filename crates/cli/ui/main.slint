@@ -43,10 +43,37 @@ export component MainWindow inherits Window {
         padding: Layout.padding;
         spacing: Layout.spacing;
 
-        Text {
-            text: "Combinator";
-            font-size: 20px;
-            font-weight: 700;
+        HorizontalBox {
+            vertical-stretch: 0;
+            spacing: Layout.gap;
+
+            Image {
+                source: @image-url("../../../assets/icons/combinator-64.png");
+                width: 48px;
+                height: 48px;
+                image-fit: contain;
+            }
+
+            VerticalBox {
+                padding: 0px;
+                spacing: 2px;
+
+                Text {
+                    text: "Combinator";
+                    font-size: 20px;
+                    font-weight: 700;
+                }
+
+                Text {
+                    text: "Composition de sources sur planches A4";
+                    font-size: 12px;
+                    color: Palette.foreground;
+                }
+            }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
         }
 
         HorizontalBox {
