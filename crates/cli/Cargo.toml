@@ -1,0 +1,38 @@
+[package]
+name = "combinator-cli"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Interface en ligne de commande et graphique optionnelle pour Combinator."
+repository.workspace = true
+
+[[bin]]
+name = "combinator"
+path = "src/main.rs"
+
+[[bin]]
+name = "combinator-gui"
+path = "src/gui_main.rs"
+required-features = ["gui"]
+
+[features]
+default = []
+gui = ["slint-ui"]
+slint-ui = ["dep:slint", "dep:rfd", "dep:slint-build"]
+
+[dependencies]
+combinator-core.workspace = true
+anyhow.workspace = true
+slint = { workspace = true, optional = true }
+rfd = { version = "0.15", default-features = false, features = ["xdg-portal", "tokio"], optional = true }
+
+[build-dependencies]
+slint-build = { workspace = true, optional = true }
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
+[dev-dependencies]
+thiserror.workspace = true

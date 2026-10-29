@@ -1,0 +1,16 @@
+import { ToastOverlay } from "toast/toast.slint";
+export { ToastTiming, ToastState } from "toast/toast.slint";
+
+export component MainWindow inherits Window {
+    title: "Combinator";
+
+    min-width: 760px;
+    min-height: 460px;
+    preferred-width: 860px;
+    preferred-height: 520px;
+
+    ToastOverlay {
+        available-width: root.width;
+        spacing: 8px;
+    }
+}

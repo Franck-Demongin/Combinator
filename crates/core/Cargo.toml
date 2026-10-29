@@ -1,0 +1,12 @@
+[package]
+name = "combinator-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Coeur metier pour la composition automatique de planches PDF."
+repository.workspace = true
+
+[dependencies]
+thiserror.workspace = true

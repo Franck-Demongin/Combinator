@@ -1,11 +1,11 @@
 #![cfg_attr(all(windows, feature = "slint-ui"), windows_subsystem = "windows")]
 
 #[cfg(feature = "slint-ui")]
-mod slint_ui;
+mod gui;
 
 #[cfg(feature = "slint-ui")]
 fn main() {
-    if let Err(error) = slint_ui::run() {
+    if let Err(error) = gui::run() {
         eprintln!("Slint error: {error}");
         std::process::exit(1);
     }

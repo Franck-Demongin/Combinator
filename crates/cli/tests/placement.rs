@@ -1,4 +1,4 @@
-use combinator::{PRINT_MARGIN_MM, SOURCES_PER_BOARD, source_slot_dimensions};
+use combinator_core::{PRINT_MARGIN_MM, SOURCES_PER_BOARD, source_slot_dimensions};
 
 #[test]
 fn source_slot_is_usable() {

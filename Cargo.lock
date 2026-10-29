@@ -752,14 +752,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
 
 [[package]]
-name = "combinator"
+name = "combinator-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "combinator-core",
  "rfd",
  "slint",
  "slint-build",
+ "thiserror 2.0.21",
  "winresource",
+]
+
+[[package]]
+name = "combinator-core"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.21",
 ]
 
 [[package]]
