@@ -25,6 +25,10 @@ slint-ui = ["dep:slint", "dep:rfd", "dep:slint-build"]
 [dependencies]
 combinator-core.workspace = true
 anyhow.workspace = true
+clap.workspace = true
+natord.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 slint = { workspace = true, optional = true }
 rfd = { version = "0.15", default-features = false, features = ["xdg-portal", "tokio"], optional = true }
 
@@ -36,3 +40,8 @@ winresource = "0.1"
 
 [dev-dependencies]
 thiserror.workspace = true
+assert_cmd = "2"
+tempfile = "3"
+image.workspace = true
+predicates = "3"
+lopdf.workspace = true

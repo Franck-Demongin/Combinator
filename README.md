@@ -16,6 +16,17 @@ cargo build -p combinator-cli
 cargo build -p combinator-cli --features gui
 ```
 
+## CLI
+
+```sh
+combinator --dir ./sources -o report.json
+combinator --source a.png b.jpg c.pdf -o report.json
+combinator --dir ./sources --dry-run
+```
+
+Supported inputs: PNG, JPEG, PDF and HEIC/HEIF. A directory is scanned at its
+top level only; nested directories are ignored. The report is written as JSON.
+
 ## System dependencies (Ubuntu)
 
 ```sh

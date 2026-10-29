@@ -1,6 +1,6 @@
 //! A4 composition planning without PDF generation or file reading.
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SourceDimensions {
     pub width_mm: f64,
     pub height_mm: f64,
@@ -19,7 +19,7 @@ impl SourceDimensions {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Rotation {
     None,
     Degrees90,
@@ -34,14 +34,14 @@ impl Rotation {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum FitStatus {
     Fits,
     ScaledUp,
     ScaledDown,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Placement {
     pub source_index: usize,
     pub slot_index: usize,
@@ -59,7 +59,7 @@ pub struct Placement {
     pub fit_status: FitStatus,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Board {
     pub index: usize,
     pub width_mm: f64,
@@ -67,13 +67,13 @@ pub struct Board {
     pub placements: Vec<Placement>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SourceIssue {
     pub source_index: usize,
     pub reason: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CompositionReport {
     pub board_width_mm: f64,
     pub board_height_mm: f64,

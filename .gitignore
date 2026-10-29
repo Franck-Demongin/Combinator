@@ -1,2 +1,4 @@
 /target/
 /.qwen/
+/data/
+/output/

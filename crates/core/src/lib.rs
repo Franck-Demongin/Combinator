@@ -1,6 +1,8 @@
 //! Core, GUI-independent combinator logic.
 
 pub mod composition;
+pub mod error;
+pub mod sources;
 
 pub const A4_WIDTH_MM: f64 = 210.0;
 pub const A4_HEIGHT_MM: f64 = 297.0;
@@ -31,6 +33,10 @@ pub fn source_slot_dimensions() -> BoardRegion {
 
 pub use composition::{
     Board, CompositionReport, Placement, SourceDimensions, SourceIssue, compose,
+};
+pub use error::SourceError;
+pub use sources::{
+    dimensions_from_path, expand_directory, is_supported_path, supported_extensions,
 };
 
 #[cfg(test)]
