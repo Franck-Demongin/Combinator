@@ -10,10 +10,10 @@ Initial skeleton. Implementation of the composition engine is in progress.
 
 ```sh
 cargo fmt --check
-cargo test
-cargo clippy --all-targets --all-features -- -D warnings
-cargo build
-cargo build --features gui
+cargo test --workspace
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo build -p combinator-cli
+cargo build -p combinator-cli --features gui
 ```
 
 ## System dependencies (Ubuntu)

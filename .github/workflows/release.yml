@@ -27,7 +27,7 @@ jobs:
             libxkbcommon-dev libwayland-dev desktop-file-utils
 
       - name: Build CLI
-        run: cargo build --release --locked --bin combinator
+        run: cargo build --release --locked -p combinator-cli
 
       - name: Build GUI
-        run: cargo build --release --locked --features slint-ui --bin combinator-gui
+        run: cargo build --release --locked -p combinator-cli --features slint-ui --bin combinator-gui

@@ -31,13 +31,13 @@ jobs:
         run: cargo fmt --check
 
       - name: Cargo test
-        run: cargo test --locked
+        run: cargo test --workspace --locked
 
-      - name: Cargo build
-        run: cargo build --locked
+      - name: Cargo build CLI
+        run: cargo build --locked -p combinator-cli
 
       - name: Cargo build GUI
-        run: cargo build --features gui --locked
+        run: cargo build --locked -p combinator-cli --features gui
 
       - name: Clippy
-        run: cargo clippy --all-targets --all-features --locked -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
