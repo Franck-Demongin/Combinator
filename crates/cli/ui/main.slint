@@ -23,7 +23,7 @@ global Layout {
 }
 
 export component MainWindow inherits Window {
-    title: "Combinator";
+    title: "Combinator - v" + root.version;
 
     min-width: 760px;
     min-height: 720px;
@@ -32,6 +32,7 @@ export component MainWindow inherits Window {
 
     in-out property <[SourceItem]> source-items;
     in-out property <string> output-path: "combinator.pdf";
+    in-out property <string> version: "";
     in-out property <bool> force-overwrite: false;
     in-out property <bool> busy: false;
     in-out property <float> progress: 0.0;

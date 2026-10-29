@@ -37,6 +37,8 @@ pub fn run() -> Result<()> {
 
     ui.set_output_path(default_output_path().display().to_string().into());
 
+    ui.set_version(env!("CARGO_PKG_VERSION").into());
+
     let report_dialog = Rc::new(RefCell::new(None::<ReportDialog>));
     let pending_drop_target = Rc::new(RefCell::new(None::<usize>));
 
