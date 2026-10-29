@@ -472,10 +472,15 @@ fn output_folder(path: &Path) -> PathBuf {
 }
 
 fn desktop_dir() -> PathBuf {
+    if let Some(path) = desktop_from_xdg_config() {
+        return path;
+    }
     if let Ok(home) = std::env::var("HOME") {
-        let desktop = PathBuf::from(home).join("Desktop");
-        if desktop.is_dir() {
-            return desktop;
+        for name in ["Desktop", "Bureau"] {
+            let desktop = PathBuf::from(&home).join(name);
+            if desktop.is_dir() {
+                return desktop;
+            }
         }
     }
     if let Ok(profile) = std::env::var("USERPROFILE") {
@@ -496,7 +501,54 @@ fn desktop_dir() -> PathBuf {
             return desktop;
         }
     }
+    if let Ok(output) = std::process::Command::new("xdg-user-dir")
+        .arg("DESKTOP")
+        .output()
+    {
+        let text = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+        if !text.is_empty() {
+            let desktop = PathBuf::from(text);
+            if desktop.is_dir() {
+                return desktop;
+            }
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(output) = std::process::Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-Command",
+                "[Environment]::GetFolderPath('Desktop')",
+            ])
+            .output()
+        {
+            let text = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+            if !text.is_empty() {
+                let desktop = PathBuf::from(text);
+                if desktop.is_dir() {
+                    return desktop;
+                }
+            }
+        }
+    }
     std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+}
+
+fn desktop_from_xdg_config() -> Option<PathBuf> {
+    let home = std::env::var("HOME").ok()?;
+    let contents = std::fs::read_to_string(Path::new(&home).join(".config/user-dirs.dirs")).ok()?;
+    for line in contents.lines() {
+        let line = line.trim();
+        if let Some(value) = line.strip_prefix("XDG_DESKTOP_DIR=") {
+            let value = value.trim_matches('"').replace("$HOME", &home);
+            let desktop = PathBuf::from(value);
+            if desktop.is_dir() {
+                return Some(desktop);
+            }
+        }
+    }
+    None
 }
 
 fn default_output_path() -> PathBuf {
