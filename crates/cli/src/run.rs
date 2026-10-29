@@ -24,7 +24,7 @@ struct Cli {
     dir: Option<PathBuf>,
 
     /// Entrees positionnelles (fichiers ou repertoires).
-    #[arg(value_name = "INPUT", trailing_var_arg = true)]
+    #[arg(value_name = "INPUT")]
     inputs: Vec<PathBuf>,
 
     /// Chemin du rapport JSON genere.
