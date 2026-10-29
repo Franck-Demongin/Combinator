@@ -47,10 +47,30 @@ Equivalent Windows installations must also provide `pdftoppm`.
 
 ## Linux installation
 
+For a source checkout:
+
 ```sh
 cargo build --release --features gui --bin combinator-gui
 ./packaging/linux/install-local.sh target/release/combinator-gui
 ```
+
+For a downloaded Linux release archive:
+
+```sh
+tar -xzf combinator-<version>-linux-x86_64.tar.gz
+cd combinator-<version>-linux-x86_64
+./packaging/linux/install-local.sh "$PWD/combinator-gui"
+```
+
+The installer copies the binary, desktop entry, and hicolor icons, then refreshes
+`applications` and icon caches. Verify the installation with:
+
+```sh
+desktop-file-validate ~/.local/share/applications/io.github.Franck-Demongin.Combinator.desktop
+gtk-update-icon-cache -f ~/.local/share/icons/hicolor
+```
+
+`~/.local/bin` must be in `PATH`.
 
 ## Identity
 

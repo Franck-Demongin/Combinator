@@ -9,6 +9,8 @@ LOCAL_BIN="$HOME_DIR/.local/bin"
 APPLICATIONS="$HOME_DIR/.local/share/applications"
 ICONS="$HOME_DIR/.local/share/icons/hicolor"
 DESKTOP_SOURCE="$REPO_ROOT/packaging/linux/$APP_ID.desktop"
+INDEX_SOURCE="$REPO_ROOT/packaging/linux/hicolor.index.theme"
+SYSTEM_INDEX="/usr/share/icons/hicolor/index.theme"
 
 if [[ ! -x "$BIN_SOURCE" ]]; then
     echo "binary not found or not executable: $BIN_SOURCE" >&2
@@ -27,6 +29,12 @@ done
 install -m 0644 "$REPO_ROOT/assets/icons/combinator.svg" \
     "$ICONS/scalable/apps/$APP_ID.svg"
 
+if [[ -f "$INDEX_SOURCE" ]]; then
+    install -m 0644 "$INDEX_SOURCE" "$ICONS/index.theme"
+elif [[ -f "$SYSTEM_INDEX" ]]; then
+    install -m 0644 "$SYSTEM_INDEX" "$ICONS/index.theme"
+fi
+
 if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$APPLICATIONS" || true
 fi
@@ -35,4 +43,3 @@ if command -v gtk-update-icon-cache >/dev/null 2>&1; then
 fi
 
 echo "Installed Combinator GUI to $LOCAL_BIN/combinator-gui"
-EOF

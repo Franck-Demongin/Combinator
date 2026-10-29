@@ -67,6 +67,8 @@ jobs:
           cp ./target/release/combinator-gui "dist/${STAGE}/"
           cp ./README.md ./LICENSE "dist/${STAGE}/"
           cp ./packaging/linux/io.github.Franck-Demongin.Combinator.desktop "dist/${STAGE}/"
+          cp -r ./assets/icons "dist/${STAGE}/assets/"
+          cp -r ./packaging/linux "dist/${STAGE}/packaging/"
           tar -czf "dist/${STAGE}.tar.gz" -C dist "${STAGE}"
           (cd dist && sha256sum "${STAGE}.tar.gz" > "${STAGE}.tar.gz.sha256")
           rm -rf "dist/${STAGE}"
