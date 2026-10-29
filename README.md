@@ -4,7 +4,11 @@ Combinator composes PDF boards from pairs of source images and documents.
 
 ## Status
 
-Initial skeleton. Implementation of the composition engine is in progress.
+Implemented for the 0.1.0 release: the composition engine and CLI are complete for A4 PDF
+composition from PNG, JPEG, WebP, PDF, and HEIC/HEIF sources, with optional JSON report
+output. The optional Slint GUI MVP is implemented around the same pipeline and provides
+native source selection, asynchronous generation, progress feedback, toasts, and
+output/report/overwrite controls.
 
 ## Build
 

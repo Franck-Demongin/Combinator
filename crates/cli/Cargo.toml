@@ -19,8 +19,8 @@ required-features = ["gui"]
 
 [features]
 default = []
-gui = ["slint-ui"]
-slint-ui = ["dep:slint", "dep:rfd", "dep:slint-build"]
+gui = ["dep:slint", "dep:rfd", "dep:slint-build"]
+slint-ui = ["gui"]
 
 [dependencies]
 combinator-core.workspace = true
