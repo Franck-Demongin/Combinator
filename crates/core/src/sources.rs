@@ -10,7 +10,7 @@ use crate::composition::SourceDimensions;
 use crate::error::SourceError;
 
 pub fn supported_extensions() -> &'static [&'static str] {
-    &["png", "jpg", "jpeg", "pdf", "heic", "heif"]
+    &["png", "jpg", "jpeg", "webp", "pdf", "heic", "heif"]
 }
 
 pub fn is_supported_path(path: &Path) -> bool {
@@ -62,7 +62,7 @@ pub fn dimensions_from_path(path: &Path) -> Result<Vec<SourceDimensions>, Source
         .unwrap_or_default();
 
     match extension.as_str() {
-        "png" | "jpg" | "jpeg" => image_dimensions_mm(path),
+        "png" | "jpg" | "jpeg" | "webp" => image_dimensions_mm(path),
         "pdf" => pdf_dimensions_mm(path),
         "heic" | "heif" => heic_dimensions_mm(path),
         _ => Err(SourceError::UnsupportedFormat {

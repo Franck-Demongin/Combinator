@@ -1,6 +1,6 @@
 use anyhow::{Context, Result, bail};
 use clap::Parser;
-use combinator_core::{SourceDimensions, SourceError, compose};
+use combinator_core::{FitStatus, SourceDimensions, SourceError, compose};
 use image::{DynamicImage, ImageBuffer, ImageReader, RgbImage, codecs::jpeg::JpegEncoder};
 use lopdf::{Document, Object, Stream, content::Content, content::Operation};
 use serde_json::json;
@@ -79,6 +79,7 @@ pub struct GenerationSummary {
     pub source_count: usize,
     pub board_count: usize,
     pub output: PathBuf,
+    pub report_text: String,
 }
 
 pub fn run() -> Result<()> {
@@ -123,7 +124,7 @@ pub fn run() -> Result<()> {
     let mut rasters: Vec<Raster> = Vec::new();
     for file in &files {
         match file_extension_lower(file).as_str() {
-            "png" | "jpg" | "jpeg" => rasters.push(raster_from_image(file)?),
+            "png" | "jpg" | "jpeg" | "webp" => rasters.push(raster_from_image(file)?),
             "heic" | "heif" => rasters.push(raster_from_heic(file)?),
             "pdf" => rasters.extend(raster_from_pdf(file)?),
             _ => bail!("format non supporte : {}", file.display()),
@@ -279,7 +280,7 @@ fn raster_from_image(path: &Path) -> Result<Raster> {
             path.display()
         )
     })?;
-    let rgb_image = image.to_rgb8();
+    let rgb_image = composite_image_to_rgb(image);
     let (dpi_x, dpi_y) = image_dpi(&bytes);
 
     Ok(Raster {
@@ -314,7 +315,7 @@ fn raster_from_heic(path: &Path) -> Result<Raster> {
     })?;
     let image = build_heic_image(&decoded, layout, info.has_alpha, info.bit_depth > 8)
         .with_context(|| format!("construction image HEIC pour {}", path.display()))?;
-    let rgb_image = image.to_rgb8();
+    let rgb_image = composite_image_to_rgb(image);
 
     Ok(Raster {
         path: path.display().to_string(),
@@ -431,7 +432,7 @@ fn raster_from_generated_png(source: &Path, page_index: usize, png_path: &Path) 
             png_path.display()
         )
     })?;
-    let rgb_image = image.to_rgb8();
+    let rgb_image = composite_image_to_rgb(image);
 
     let _ = bytes;
     Ok(Raster {
@@ -622,6 +623,26 @@ fn write_pdf(
     Ok(())
 }
 
+fn composite_image_to_rgb(image: DynamicImage) -> RgbImage {
+    let rgba = image.into_rgba8();
+    let width = rgba.width();
+    let height = rgba.height();
+    let mut output = vec![0u8; width as usize * height as usize * 3];
+
+    for (index, pixel) in rgba.as_raw().as_chunks::<4>().0.iter().enumerate() {
+        let alpha = pixel[3] as f32 / 255.0;
+        let inverse = 1.0 - alpha;
+        let r = (pixel[0] as f32 * alpha + 255.0 * inverse).round() as u8;
+        let g = (pixel[1] as f32 * alpha + 255.0 * inverse).round() as u8;
+        let b = (pixel[2] as f32 * alpha + 255.0 * inverse).round() as u8;
+        output[index * 3] = r;
+        output[index * 3 + 1] = g;
+        output[index * 3 + 2] = b;
+    }
+
+    RgbImage::from_raw(width, height, output).expect("rgb buffer size matched source dimensions")
+}
+
 fn image_dpi(bytes: &[u8]) -> (f32, f32) {
     if bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
         png_dpi(bytes).unwrap_or((300.0, 300.0))
@@ -728,7 +749,7 @@ pub fn generate_collected(
     let mut rasters: Vec<Raster> = Vec::new();
     for (index, file) in files.iter().enumerate() {
         match file_extension_lower(file).as_str() {
-            "png" | "jpg" | "jpeg" => rasters.push(raster_from_image(file)?),
+            "png" | "jpg" | "jpeg" | "webp" => rasters.push(raster_from_image(file)?),
             "heic" | "heif" => rasters.push(raster_from_heic(file)?),
             "pdf" => rasters.extend(raster_from_pdf(file)?),
             _ => bail!("format non supporte : {}", file.display()),
@@ -796,10 +817,63 @@ pub fn generate_collected(
         fraction: 1.0,
     });
 
+    let mut report_lines = vec![
+        "Rapport Combinator".to_owned(),
+        format!("PDF : {}", output.display()),
+        format!("Sources : {}", rasters.len()),
+        format!("Planches : {}", composition_report.board_count),
+        format!(
+            "Marge : {} mm ; slot : {} x {} mm ; espace entre slots : {} mm",
+            composition_report.print_margin_mm,
+            composition_report.slot_width_mm,
+            composition_report.slot_height_mm,
+            composition_report.slot_gap_mm
+        ),
+    ];
+    for board in &composition_report.boards {
+        report_lines.push(format!("Planche {} :", board.index + 1));
+        for placement in &board.placements {
+            let status = match placement.fit_status {
+                FitStatus::Fits => "taille exacte",
+                FitStatus::ScaledUp => "agrandi pour remplir le slot",
+                FitStatus::ScaledDown => "reduit pour tenir dans le slot",
+            };
+            report_lines.push(format!(
+                "  - source {} : {} x {} mm -> {} x {} mm, rotation {}°, échelle {:.3}, {}",
+                placement.source_index + 1,
+                placement.source_width_mm,
+                placement.source_height_mm,
+                placement.placed_width_mm,
+                placement.placed_height_mm,
+                placement.rotation_degrees,
+                placement.scale_factor,
+                status
+            ));
+        }
+    }
+    if !composition_report.issues.is_empty() {
+        report_lines.push("Problèmes :".to_owned());
+        for issue in &composition_report.issues {
+            report_lines.push(format!(
+                "  - source {} : {}",
+                issue.source_index + 1,
+                issue.reason
+            ));
+        }
+    }
+    if !composition_report.warnings.is_empty() {
+        report_lines.push("Avertissements :".to_owned());
+        for warning in &composition_report.warnings {
+            report_lines.push(format!("  - {warning}"));
+        }
+    }
+    let report_text = report_lines.join("\n");
+
     Ok(GenerationSummary {
         source_count: rasters.len(),
         board_count: composition_report.board_count,
         output: output.to_path_buf(),
+        report_text,
     })
 }
 

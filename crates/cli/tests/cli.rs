@@ -14,26 +14,44 @@ fn make_png(path: &std::path::Path, width: u32, height: u32) {
 }
 
 fn make_pdf(path: &std::path::Path, width: i64, height: i64) {
+    make_pdf_pages(path, width, height, 1);
+}
+
+fn make_webp(path: &std::path::Path, width: u32, height: u32) {
+    let image = image::ImageBuffer::<image::Rgb<u8>, _>::from_fn(width, height, |_, _| {
+        image::Rgb([10, 20, 30])
+    });
+    image.save(path).expect("webp");
+}
+
+fn make_pdf_pages(path: &std::path::Path, width: i64, height: i64, page_count: usize) {
     use lopdf::{Object, dictionary};
     let mut document = lopdf::Document::with_version("1.5");
     let pages_id = document.new_object_id();
-    let page_id = document.new_object_id();
+
     let media_box = Object::Array(vec![
         Object::Integer(0),
         Object::Integer(0),
         Object::Integer(width),
         Object::Integer(height),
     ]);
-    let page = dictionary! {
-        "Type" => "Page",
-        "Parent" => pages_id,
-        "MediaBox" => media_box,
-    };
-    document.set_object(page_id, Object::Dictionary(page));
+
+    let mut page_ids = Vec::new();
+    for _ in 0..page_count.max(1) {
+        let page_id = document.new_object_id();
+        let page = dictionary! {
+            "Type" => "Page",
+            "Parent" => pages_id,
+            "MediaBox" => media_box.clone(),
+        };
+        document.set_object(page_id, Object::Dictionary(page));
+        page_ids.push(page_id);
+    }
+
     let pages = dictionary! {
         "Type" => "Pages",
-        "Kids" => Object::Array(vec![Object::Reference(page_id)]),
-        "Count" => Object::Integer(1),
+        "Kids" => Object::Array(page_ids.iter().map(|id| Object::Reference(*id)).collect()),
+        "Count" => Object::Integer(page_ids.len() as i64),
     };
     document.set_object(pages_id, Object::Dictionary(pages));
     let catalog_id = document.new_object_id();
@@ -87,6 +105,92 @@ fn directory_is_single_level_and_writes_pdf() {
         2,
         "3 sources should produce 2 A4 boards"
     );
+}
+
+#[test]
+fn multi_page_pdf_is_treated_as_independent_pages() {
+    let temp = TempDir::new().expect("temp");
+    make_pdf_pages(&temp.path().join("pages.pdf"), 200, 100, 4);
+
+    let output = temp
+        .path()
+        .parent()
+        .unwrap()
+        .join("combinator-multi-page-report.pdf");
+    let _ = fs::remove_file(&output);
+    combinator()
+        .arg("--source")
+        .arg(temp.path().join("pages.pdf"))
+        .arg("-o")
+        .arg(&output)
+        .assert()
+        .success();
+
+    let bytes = fs::read(&output).expect("read pdf");
+    assert!(bytes.starts_with(b"%PDF"), "output should be a PDF");
+    let document = Document::load(&output).expect("valid pdf");
+    assert_eq!(
+        document.get_pages().len(),
+        2,
+        "4 PDF pages should produce 2 A4 boards"
+    );
+}
+
+#[test]
+fn multi_page_pdf_report_lists_every_page() {
+    let temp = TempDir::new().expect("temp");
+    make_pdf_pages(&temp.path().join("pages.pdf"), 200, 100, 4);
+
+    let output = temp
+        .path()
+        .parent()
+        .unwrap()
+        .join("combinator-multi-page-report-2.pdf");
+    let report = temp
+        .path()
+        .parent()
+        .unwrap()
+        .join("combinator-multi-page-report-2.json");
+    let _ = fs::remove_file(&output);
+    let _ = fs::remove_file(&report);
+    combinator()
+        .arg("--source")
+        .arg(temp.path().join("pages.pdf"))
+        .arg("-o")
+        .arg(&output)
+        .arg("--report")
+        .arg(&report)
+        .assert()
+        .success();
+
+    let report_text = fs::read_to_string(&report).expect("read report");
+    for page_index in 0..4 {
+        assert!(
+            report_text.contains(&format!(r#""page": {page_index}"#)),
+            "report should mention page {page_index}"
+        );
+    }
+}
+
+#[test]
+fn webp_source_is_supported() {
+    let temp = TempDir::new().expect("temp");
+    make_webp(&temp.path().join("a.webp"), 20, 10);
+
+    let output = temp.path().parent().unwrap().join("combinator-webp.pdf");
+    let _ = fs::remove_file(&output);
+    combinator()
+        .arg("--source")
+        .arg(temp.path().join("a.webp"))
+        .arg("-o")
+        .arg(&output)
+        .assert()
+        .success();
+
+    let bytes = fs::read(&output).expect("read pdf");
+    assert!(bytes.starts_with(b"%PDF"));
+    let document = Document::load(&output).expect("valid pdf");
+    assert_eq!(document.get_pages().len(), 1);
 }
 
 #[test]

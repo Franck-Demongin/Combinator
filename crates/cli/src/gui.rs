@@ -7,9 +7,11 @@ use slint::ComponentHandle;
 use slint::Model;
 use slint::ModelRc;
 use slint::VecModel;
+use std::cell::RefCell;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::rc::Rc;
 use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
@@ -19,7 +21,7 @@ use toast::{ToastLevel, Toaster};
 
 slint::include_modules!();
 
-const SUPPORTED_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "heic", "heif", "pdf"];
+const SUPPORTED_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "webp", "heic", "heif", "pdf"];
 
 pub const APP_ID: &str = "io.github.Franck-Demongin.Combinator";
 
@@ -33,8 +35,10 @@ pub fn run() -> Result<()> {
 
     let toaster = Toaster::install(&ui);
 
+    let report_dialog = Rc::new(RefCell::new(None::<ReportDialog>));
+
     register_source_actions(&ui, toaster.clone());
-    register_output_actions(&ui, toaster.clone());
+    register_output_actions(&ui, toaster.clone(), report_dialog);
     register_generation(&ui, toaster);
 
     ui.run()
@@ -148,7 +152,11 @@ fn register_source_actions(ui: &MainWindow, toaster: Toaster) {
     });
 }
 
-fn register_output_actions(ui: &MainWindow, toaster: Toaster) {
+fn register_output_actions(
+    ui: &MainWindow,
+    toaster: Toaster,
+    report_dialog: Rc<RefCell<Option<ReportDialog>>>,
+) {
     let weak = ui.as_weak();
     ui.on_choose_output(move || {
         if let Some(ui) = weak.upgrade() {
@@ -195,6 +203,50 @@ fn register_output_actions(ui: &MainWindow, toaster: Toaster) {
             open_folder_toaster.show(error.to_string(), ToastLevel::Error);
         }
     });
+
+    let weak = ui.as_weak();
+    let report_open_toaster = toaster.clone();
+    let report_for_open = report_dialog;
+    ui.on_open_report(move || {
+        let Some(ui) = weak.upgrade() else {
+            return;
+        };
+        if ui.get_busy() {
+            return;
+        }
+        let report_text = ui.get_report_text();
+        let mut guard = report_for_open.borrow_mut();
+        if guard.is_none() {
+            match create_report_dialog(report_for_open.clone()) {
+                Ok(dialog) => *guard = Some(dialog),
+                Err(error) => {
+                    report_open_toaster.show(
+                        format!("impossible d'ouvrir le rapport : {error}"),
+                        ToastLevel::Error,
+                    );
+                    return;
+                }
+            }
+        }
+        if let Some(dialog) = guard.as_ref() {
+            dialog.set_report_text(report_text);
+            let _ = dialog.window().show();
+        }
+    });
+}
+
+fn create_report_dialog(
+    handle: Rc<RefCell<Option<ReportDialog>>>,
+) -> Result<ReportDialog, slint::PlatformError> {
+    let dialog = ReportDialog::new()?;
+    let closer = handle.clone();
+    dialog.on_ok_clicked(move || {
+        if let Some(dialog) = closer.borrow().as_ref() {
+            let _ = dialog.window().hide();
+        }
+        *closer.borrow_mut() = None;
+    });
+    Ok(dialog)
 }
 
 fn register_generation(ui: &MainWindow, toaster: Toaster) {
@@ -273,6 +325,7 @@ fn schedule_generation_result(
                     match result {
                         Ok(summary) => {
                             ui.set_output_path(summary.output.display().to_string().into());
+                            ui.set_report_text(summary.report_text.clone().into());
                             ui.set_progress(1.0);
                             ui.set_status_text(
                                 format!(
@@ -294,6 +347,7 @@ fn schedule_generation_result(
                         }
                         Err(message) => {
                             ui.set_output_ready(false);
+                            ui.set_report_text(String::new().into());
                             ui.set_status_text(message.clone().into());
                             toaster.show(message, ToastLevel::Error);
                         }

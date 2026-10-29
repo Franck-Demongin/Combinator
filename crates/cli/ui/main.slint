@@ -1,4 +1,4 @@
-import { Button, CheckBox, HorizontalBox, LineEdit, ListView, Palette, ProgressIndicator, VerticalBox } from "std-widgets.slint";
+import { Button, CheckBox, HorizontalBox, LineEdit, ListView, Palette, ProgressIndicator, ScrollView, StandardButton, VerticalBox } from "std-widgets.slint";
 import { ToastOverlay } from "toast/toast.slint";
 export { ToastTiming, ToastState } from "toast/toast.slint";
 
@@ -25,6 +25,7 @@ export component MainWindow inherits Window {
     in-out property <float> progress: 0.0;
     in-out property <string> status-text: "Pret.";
     in-out property <bool> output-ready: false;
+    in property <string> report-text: "";
 
     callback show-success();
     callback show-warning();
@@ -36,6 +37,7 @@ export component MainWindow inherits Window {
     callback generate();
     callback open-output-file();
     callback open-output-folder();
+    callback open-report();
 
     VerticalBox {
         padding: Layout.padding;
@@ -133,19 +135,14 @@ export component MainWindow inherits Window {
         }
 
         HorizontalBox {
-            alignment: end;
+            spacing: Layout.gap;
 
             Button {
-                text: "Generer";
-                primary: true;
-                enabled: !root.busy && root.source-items.length > 0;
-                clicked => { root.generate(); }
+                text: "Rapport";
+                visible: root.output-ready;
+                enabled: root.output-ready;
+                clicked => { root.open-report(); }
             }
-        }
-
-        HorizontalBox {
-            alignment: end;
-            spacing: Layout.gap;
 
             Button {
                 text: "Ouvrir le fichier";
@@ -160,11 +157,47 @@ export component MainWindow inherits Window {
                 enabled: root.output-ready;
                 clicked => { root.open-output-folder(); }
             }
+
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+
+            Button {
+                text: "Generer";
+                primary: true;
+                enabled: !root.busy && root.source-items.length > 0;
+                clicked => { root.generate(); }
+            }
         }
     }
 
     ToastOverlay {
         available-width: root.width;
         spacing: Layout.gap;
+    }
+}
+
+export component ReportDialog inherits Dialog {
+    title: "Rapport";
+    min-width: 620px;
+    min-height: 420px;
+    preferred-width: 620px;
+    preferred-height: 480px;
+
+    in property <string> report-text;
+
+    ScrollView {
+        width: parent.width;
+        height: parent.height;
+
+        Text {
+            text: root.report-text;
+            wrap: word-wrap;
+            width: parent.width;
+        }
+    }
+
+    StandardButton {
+        kind: ok;
     }
 }

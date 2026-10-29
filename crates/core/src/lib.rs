@@ -32,7 +32,7 @@ pub fn source_slot_dimensions() -> BoardRegion {
 }
 
 pub use composition::{
-    Board, CompositionReport, Placement, SourceDimensions, SourceIssue, compose,
+    Board, CompositionReport, FitStatus, Placement, SourceDimensions, SourceIssue, compose,
 };
 pub use error::SourceError;
 pub use sources::{

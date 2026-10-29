@@ -25,7 +25,7 @@ combinator --dir ./sources --dry-run
 combinator --dir ./sources --report report.json
 ```
 
-Supported inputs: PNG, JPEG, PDF and HEIC/HEIF. A directory is scanned at its
+Supported inputs: PNG, JPEG, WebP, PDF and HEIC/HEIF. A directory is scanned at its
 top level only; nested directories are ignored. The primary output is a composed
 A4 PDF. An optional JSON composition report can be written with `--report`.
 
