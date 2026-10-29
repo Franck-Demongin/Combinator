@@ -204,14 +204,12 @@ export component MainWindow inherits Window {
                             }
 
                             Button {
-                                text: "×";
+                                icon: @image-url("../../../assets/icons/ui/close.svg");
+                                icon-size: 16px;
+                                colorize-icon: true;
                                 width: 28px;
                                 enabled: !root.busy;
                                 clicked => { root.remove-source(index); }
-                            }
-
-                            Rectangle {
-                                width: 8px;
                             }
                         }
                     }
