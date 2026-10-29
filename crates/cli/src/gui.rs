@@ -238,7 +238,17 @@ fn register_output_actions(
         let Some(ui) = weak.upgrade() else {
             return;
         };
+        if ui.get_busy() {
+            return;
+        }
         let path = PathBuf::from(ui.get_output_path().as_str());
+        if path.as_os_str().is_empty() {
+            open_file_toaster.show(
+                "Aucun fichier de sortie selectionne.".to_owned(),
+                ToastLevel::Warning,
+            );
+            return;
+        }
         if let Err(error) = open_path(&path) {
             open_file_toaster.show(error.to_string(), ToastLevel::Error);
         }
@@ -250,9 +260,19 @@ fn register_output_actions(
         let Some(ui) = weak.upgrade() else {
             return;
         };
+        if ui.get_busy() {
+            return;
+        }
         let path = PathBuf::from(ui.get_output_path().as_str());
-        let folder = path.parent().unwrap_or_else(|| Path::new("."));
-        if let Err(error) = open_path(folder) {
+        if path.as_os_str().is_empty() {
+            open_folder_toaster.show(
+                "Aucun fichier de sortie selectionne.".to_owned(),
+                ToastLevel::Warning,
+            );
+            return;
+        }
+        let folder = output_folder(&path);
+        if let Err(error) = open_path(&folder) {
             open_folder_toaster.show(error.to_string(), ToastLevel::Error);
         }
     });
@@ -419,6 +439,20 @@ fn schedule_generation_result(
             }
         }
     });
+}
+
+fn output_folder(path: &Path) -> PathBuf {
+    let parent = match path.parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => parent.to_path_buf(),
+        _ => PathBuf::from("."),
+    };
+    if parent.is_relative() {
+        std::env::current_dir()
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join(parent)
+    } else {
+        parent
+    }
 }
 
 fn open_path(path: &Path) -> Result<()> {
