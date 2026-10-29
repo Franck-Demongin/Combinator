@@ -1,3 +1,4 @@
+import { Button, HorizontalBox, VerticalBox } from "std-widgets.slint";
 import { ToastOverlay } from "toast/toast.slint";
 export { ToastTiming, ToastState } from "toast/toast.slint";
 
@@ -8,6 +9,43 @@ export component MainWindow inherits Window {
     min-height: 460px;
     preferred-width: 860px;
     preferred-height: 520px;
+
+    callback show-success();
+    callback show-warning();
+    callback show-error();
+
+    VerticalBox {
+        padding: 16px;
+        spacing: 12px;
+        alignment: center;
+
+        Text {
+            text: "Hello World!";
+            font-size: 24px;
+            font-weight: 700;
+            horizontal-alignment: center;
+        }
+
+        HorizontalBox {
+            spacing: 8px;
+            alignment: center;
+
+            Button {
+                text: "Toast succès";
+                clicked => { root.show-success(); }
+            }
+
+            Button {
+                text: "Toast avertissement";
+                clicked => { root.show-warning(); }
+            }
+
+            Button {
+                text: "Toast erreur";
+                clicked => { root.show-error(); }
+            }
+        }
+    }
 
     ToastOverlay {
         available-width: root.width;
