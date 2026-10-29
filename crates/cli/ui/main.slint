@@ -44,6 +44,7 @@ export component MainWindow inherits Window {
     callback show-error();
     callback add-files();
     callback add-directory();
+    callback add-zip();
     callback clear-sources();
     callback remove-source(int);
     callback source-drag-finished(int, DragAction);
@@ -113,6 +114,26 @@ export component MainWindow inherits Window {
             }
 
             Button {
+                text: "Ouvrir un Zip";
+                icon: @image-url("../../../assets/icons/ui/file-open.svg");
+                icon-size: 16px;
+                colorize-icon: true;
+                enabled: !root.busy;
+                clicked => { root.add-zip(); }
+            }
+        }
+
+        HorizontalBox {
+            spacing: Layout.gap;
+            Text {
+                text: "Sources (" + root.source-items.length + ")";
+                font-weight: 600;
+                vertical-alignment: center;
+            }
+            Rectangle {
+                horizontal-stretch: 1;
+            }
+            Button {
                 text: "Vider";
                 icon: @image-url("../../../assets/icons/ui/delete.svg");
                 icon-size: 16px;
@@ -120,11 +141,6 @@ export component MainWindow inherits Window {
                 enabled: !root.busy;
                 clicked => { root.clear-sources(); }
             }
-        }
-
-        Text {
-            text: "Sources (" + root.source-items.length + ")";
-            font-weight: 600;
         }
 
         Rectangle {

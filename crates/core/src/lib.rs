@@ -36,7 +36,7 @@ pub use composition::{
 };
 pub use error::SourceError;
 pub use sources::{
-    dimensions_from_path, expand_directory, is_supported_path, supported_extensions,
+    dimensions_from_path, expand_directory, expand_zip, is_supported_path, supported_extensions,
 };
 
 #[cfg(test)]

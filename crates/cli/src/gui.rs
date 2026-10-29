@@ -150,6 +150,46 @@ fn register_source_actions(
     });
 
     let weak = ui.as_weak();
+    let toaster_directory = toaster.clone();
+    ui.on_add_zip(move || {
+        if let Some(ui) = weak.upgrade() {
+            if ui.get_busy() {
+                return;
+            }
+            let Some(archive_path) = FileDialog::new()
+                .add_filter("Archive ZIP", &["zip"])
+                .pick_file()
+            else {
+                return;
+            };
+
+            let mut current = source_list(&ui);
+            let mut added = 0;
+            match combinator_core::expand_zip(&archive_path) {
+                Ok(files) => {
+                    for path in files {
+                        let text = path.display().to_string();
+                        if !current.contains(&text) {
+                            current.push(text);
+                            added += 1;
+                        }
+                    }
+                    set_source_list(&ui, current);
+                    if added == 0 {
+                        toaster_directory.show(
+                            format!("Aucune source supportee dans {}.", archive_path.display()),
+                            ToastLevel::Warning,
+                        );
+                    }
+                }
+                Err(error) => {
+                    toaster_directory.show(error.to_string(), ToastLevel::Error);
+                }
+            }
+        }
+    });
+
+    let weak = ui.as_weak();
     ui.on_clear_sources(move || {
         if let Some(ui) = weak.upgrade()
             && !ui.get_busy()

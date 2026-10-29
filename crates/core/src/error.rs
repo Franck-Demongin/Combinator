@@ -21,6 +21,8 @@ pub enum SourceError {
     Heic { path: PathBuf, reason: String },
     #[error("dimensions invalides pour {path}")]
     InvalidDimensions { path: PathBuf },
+    #[error("archive ZIP illisible ({path}): {reason}")]
+    Zip { path: PathBuf, reason: String },
     #[error("répertoire illisible ({path}): {source}")]
     ReadDirectory {
         path: PathBuf,

@@ -3,6 +3,9 @@
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use zip::ZipArchive;
 
 use lopdf::Object;
 
@@ -315,6 +318,96 @@ fn as_f32(value: &Object) -> Option<f32> {
     }
 }
 
+static ZIP_EXTRACTION_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+pub fn expand_zip(path: &Path) -> Result<Vec<PathBuf>, SourceError> {
+    let file = fs::File::open(path).map_err(|source| SourceError::Io {
+        path: path.to_path_buf(),
+        source,
+    })?;
+
+    let mut archive = ZipArchive::new(file).map_err(|error| SourceError::Zip {
+        path: path.to_path_buf(),
+        reason: error.to_string(),
+    })?;
+
+    let extraction_root = std::env::temp_dir().join(format!(
+        "combinator-zip-{}-{}",
+        std::process::id(),
+        ZIP_EXTRACTION_COUNTER.fetch_add(1, Ordering::Relaxed)
+    ));
+    fs::create_dir_all(&extraction_root).map_err(|source| SourceError::Io {
+        path: extraction_root.clone(),
+        source,
+    })?;
+
+    let mut extracted = Vec::new();
+    for index in 0..archive.len() {
+        let mut entry = archive.by_index(index).map_err(|error| SourceError::Zip {
+            path: path.to_path_buf(),
+            reason: error.to_string(),
+        })?;
+
+        // Certaines archives stockent des noms UTF-8 sans positionner le bit
+        // UTF-8 de l'en-tête ZIP. On préfère alors décoder les octets bruts
+        // comme UTF-8 pour conserver les accents.
+        let entry_name = std::str::from_utf8(entry.name_raw())
+            .map(str::to_owned)
+            .unwrap_or_else(|_| entry.name().to_owned());
+
+        let Some(target) = zip_entry_target(&extraction_root, &entry_name) else {
+            continue;
+        };
+
+        if entry.is_dir() {
+            fs::create_dir_all(&target).map_err(|source| SourceError::Io {
+                path: target.clone(),
+                source,
+            })?;
+            continue;
+        }
+
+        if !is_supported_path(Path::new(&entry_name)) {
+            continue;
+        }
+
+        if let Some(parent) = target.parent() {
+            fs::create_dir_all(parent).map_err(|source| SourceError::Io {
+                path: parent.to_path_buf(),
+                source,
+            })?;
+        }
+
+        let mut output = fs::File::create(&target).map_err(|source| SourceError::Io {
+            path: target.clone(),
+            source,
+        })?;
+        std::io::copy(&mut entry, &mut output).map_err(|error| SourceError::Zip {
+            path: path.to_path_buf(),
+            reason: error.to_string(),
+        })?;
+
+        extracted.push(target);
+    }
+
+    extracted.sort_by(|a, b| {
+        natord::compare(a.to_string_lossy().as_ref(), b.to_string_lossy().as_ref())
+    });
+    Ok(extracted)
+}
+
+fn zip_entry_target(root: &Path, name: &str) -> Option<PathBuf> {
+    use std::path::Component;
+
+    let mut target = root.to_path_buf();
+    for component in Path::new(name).components() {
+        match component {
+            Component::Normal(part) => target.push(part),
+            _ => return None,
+        }
+    }
+    Some(target)
+}
 fn heic_dimensions_mm(path: &Path) -> Result<Vec<SourceDimensions>, SourceError> {
     let bytes = fs::read(path).map_err(|source| SourceError::Io {
         path: path.to_path_buf(),

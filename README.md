@@ -5,7 +5,7 @@ Combinator composes PDF boards from pairs of source images and documents.
 ## Status
 
 Implemented for the 0.1.0 release: the composition engine and CLI are complete for A4 PDF
-composition from PNG, JPEG, WebP, PDF, and HEIC/HEIF sources, with optional JSON report
+composition from PNG, JPEG, WebP, PDF, HEIC/HEIF and ZIP sources, with optional JSON report
 output. The optional Slint GUI MVP is implemented around the same pipeline and provides
 native source selection, asynchronous generation, progress feedback, toasts, and
 output/report/overwrite controls.
@@ -29,7 +29,7 @@ combinator --dir ./sources --dry-run
 combinator --dir ./sources --report report.json
 ```
 
-Supported inputs: PNG, JPEG, WebP, PDF and HEIC/HEIF. A directory is scanned at its
+Supported inputs: PNG, JPEG, WebP, PDF, HEIC/HEIF and ZIP. A directory is scanned at its
 top level only; nested directories are ignored. The primary output is a composed
 A4 PDF. An optional JSON composition report can be written with `--report`.
 

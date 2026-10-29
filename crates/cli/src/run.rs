@@ -101,10 +101,14 @@ pub fn run() -> Result<()> {
         if path.is_dir() {
             files.extend(expand_directory(path).map_err(source_error_to_anyhow)?);
         } else if path.is_file() {
-            if !is_supported_path(path) {
+            let extension = file_extension_lower(path);
+            if extension == "zip" {
+                files.extend(expand_zip(path).map_err(source_error_to_anyhow)?);
+            } else if !is_supported_path(path) {
                 bail!("format non supporte : {}", path.display());
+            } else {
+                files.push(path.clone());
             }
-            files.push(path.clone());
         } else {
             bail!("chemin introuvable : {}", path.display());
         }
@@ -760,6 +764,10 @@ fn expand_directory(path: &Path) -> Result<Vec<PathBuf>, SourceError> {
     combinator_core::expand_directory(path)
 }
 
+fn expand_zip(path: &Path) -> Result<Vec<PathBuf>, SourceError> {
+    combinator_core::expand_zip(path)
+}
+
 fn is_supported_path(path: &Path) -> bool {
     combinator_core::is_supported_path(path)
 }
@@ -922,10 +930,14 @@ pub fn collect_source_files(inputs: &[PathBuf]) -> Result<Vec<PathBuf>> {
         if path.is_dir() {
             files.extend(expand_directory(path).map_err(source_error_to_anyhow)?);
         } else if path.is_file() {
-            if !is_supported_path(path) {
+            let extension = file_extension_lower(path);
+            if extension == "zip" {
+                files.extend(expand_zip(path).map_err(source_error_to_anyhow)?);
+            } else if !is_supported_path(path) {
                 bail!("format non supporte : {}", path.display());
+            } else {
+                files.push(path.clone());
             }
-            files.push(path.clone());
         } else {
             bail!("chemin introuvable : {}", path.display());
         }
