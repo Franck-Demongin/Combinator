@@ -2,6 +2,16 @@ import { Button, CheckBox, HorizontalBox, LineEdit, ListView, Palette, ProgressI
 import { ToastOverlay } from "toast/toast.slint";
 export { ToastTiming, ToastState } from "toast/toast.slint";
 
+export struct SourceItem {
+    path: string,
+    name: string,
+}
+
+export global SourceTransfer {
+    pure callback path-to-transfer(string) -> data-transfer;
+    pure callback transfer-to-path(data-transfer) -> string;
+}
+
 global Layout {
     out property <length> padding: 16px;
     out property <length> spacing: 12px;
@@ -14,11 +24,11 @@ export component MainWindow inherits Window {
     title: "Combinator";
 
     min-width: 760px;
-    min-height: 460px;
+    min-height: 720px;
     preferred-width: 860px;
-    preferred-height: 520px;
+    preferred-height: 760px;
 
-    in-out property <[string]> source-items;
+    in-out property <[SourceItem]> source-items;
     in-out property <string> output-path: "combinator.pdf";
     in-out property <bool> force-overwrite: false;
     in-out property <bool> busy: false;
@@ -33,6 +43,9 @@ export component MainWindow inherits Window {
     callback add-files();
     callback add-directory();
     callback clear-sources();
+    callback remove-source(int);
+    callback source-drag-finished(int, DragAction);
+    callback source-drop-target(int, data-transfer);
     callback choose-output();
     callback generate();
     callback open-output-file();
@@ -117,13 +130,89 @@ export component MainWindow inherits Window {
             border-width: 1px;
             border-radius: Layout.radius;
             vertical-stretch: 1;
+            min-height: 280px;
 
             ListView {
-                for item in root.source-items : Text {
-                    text: item;
-                    height: Layout.row-height;
+                for item[index] in root.source-items : Rectangle {
+                    height: 48px;
                     width: parent.width;
-                    vertical-alignment: center;
+                    opacity: drag.dragging ? 0.5 : 1.0;
+                    background: drop.has-drag ? #e8f0fe : transparent;
+                    border-color: drop.has-drag ? #9bb4e0 : transparent;
+                    border-width: drop.has-drag ? 1px : 0px;
+                    border-radius: 4px;
+
+                    drop := DropArea {
+                        width: parent.width;
+                        height: parent.height;
+                        can-drop(event) => {
+                            SourceTransfer.transfer-to-path(event.data) != item.path
+                                ? DragAction.move
+                                : DragAction.none
+                        }
+                        dropped(event) => {
+                            root.source-drop-target(index, event.data);
+                            return event.proposed-action;
+                        }
+
+                        HorizontalBox {
+                            spacing: Layout.gap;
+                            padding: Layout.gap;
+
+                            Rectangle {
+                                width: 32px;
+                                height: 32px;
+                                border-radius: 4px;
+
+                                Text {
+                                    text: "≡";
+                                    font-size: 20px;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                    color: Palette.foreground;
+                                }
+
+                                drag := DragArea {
+                                    width: parent.width;
+                                    height: parent.height;
+                                    data: SourceTransfer.path-to-transfer(item.path);
+                                    allow-move: true;
+                                    drag-finished(action) => {
+                                        root.source-drag-finished(index, action);
+                                    }
+                                }
+                            }
+
+                            VerticalBox {
+                                padding: 0px;
+                                spacing: 2px;
+                                horizontal-stretch: 1;
+
+                                Text {
+                                    text: item.name;
+                                    font-size: 14px;
+                                    font-weight: 600;
+                                }
+
+                                Text {
+                                    text: item.path;
+                                    font-size: 11px;
+                                    color: Palette.foreground;
+                                }
+                            }
+
+                            Button {
+                                text: "×";
+                                width: 28px;
+                                enabled: !root.busy;
+                                clicked => { root.remove-source(index); }
+                            }
+
+                            Rectangle {
+                                width: 8px;
+                            }
+                        }
+                    }
                 }
             }
         }

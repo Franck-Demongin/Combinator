@@ -36,8 +36,9 @@ pub fn run() -> Result<()> {
     let toaster = Toaster::install(&ui);
 
     let report_dialog = Rc::new(RefCell::new(None::<ReportDialog>));
+    let pending_drop_target = Rc::new(RefCell::new(None::<usize>));
 
-    register_source_actions(&ui, toaster.clone());
+    register_source_actions(&ui, toaster.clone(), pending_drop_target);
     register_output_actions(&ui, toaster.clone(), report_dialog);
     register_generation(&ui, toaster);
 
@@ -46,7 +47,11 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
-fn register_source_actions(ui: &MainWindow, toaster: Toaster) {
+fn register_source_actions(
+    ui: &MainWindow,
+    toaster: Toaster,
+    pending_drop_target: Rc<RefCell<Option<usize>>>,
+) {
     let weak = ui.as_weak();
     let toaster_files = toaster.clone();
 
@@ -150,6 +155,54 @@ fn register_source_actions(ui: &MainWindow, toaster: Toaster) {
             set_source_list(&ui, Vec::new());
         }
     });
+
+    let weak = ui.as_weak();
+    ui.on_remove_source(move |index: i32| {
+        if let Some(ui) = weak.upgrade()
+            && !ui.get_busy()
+        {
+            let mut current = source_list(&ui);
+            let index = index as usize;
+            if index < current.len() {
+                current.remove(index);
+                set_source_list(&ui, current);
+            }
+        }
+    });
+
+    let transfer = ui.global::<SourceTransfer>();
+    transfer.on_path_to_transfer(|path| path.into());
+    transfer.on_transfer_to_path(|data| data.plain_text().unwrap_or_default());
+
+    let pending_for_drop = pending_drop_target.clone();
+    ui.on_source_drop_target(move |_index: i32, _data: slint::DataTransfer| {
+        *pending_for_drop.borrow_mut() = Some(_index as usize);
+    });
+
+    let pending_for_drag = pending_drop_target.clone();
+    let weak_drag = ui.as_weak();
+    ui.on_source_drag_finished(
+        move |source: i32, action: slint::private_unstable_api::re_exports::DragAction| {
+            if action == slint::private_unstable_api::re_exports::DragAction::Move {
+                let target = pending_for_drag.borrow_mut().take();
+                if let Some(target) = target
+                    && let Some(ui) = weak_drag.upgrade()
+                    && !ui.get_busy()
+                {
+                    let mut current = source_list(&ui);
+                    let src = source as usize;
+                    if src < current.len() && target < current.len() && src != target {
+                        let item = current.remove(src);
+                        let insert_at = if target > src { target - 1 } else { target };
+                        if insert_at <= current.len() {
+                            current.insert(insert_at, item);
+                        }
+                        set_source_list(&ui, current);
+                    }
+                }
+            }
+        },
+    );
 }
 
 fn register_output_actions(
@@ -395,12 +448,24 @@ fn source_list(ui: &MainWindow) -> Vec<String> {
     let model = ui.get_source_items();
     (0..model.row_count())
         .filter_map(|row| model.row_data(row))
-        .map(|value| value.to_string())
+        .map(|value| value.path.to_string())
         .collect()
 }
 
 fn set_source_list(ui: &MainWindow, sources: Vec<String>) {
-    let items: Vec<slint::SharedString> =
-        sources.into_iter().map(slint::SharedString::from).collect();
+    let items: Vec<SourceItem> = sources
+        .into_iter()
+        .map(|path| {
+            let name = std::path::Path::new(&path)
+                .file_name()
+                .and_then(|os| os.to_str())
+                .unwrap_or(path.as_str())
+                .to_owned();
+            SourceItem {
+                path: path.into(),
+                name: name.into(),
+            }
+        })
+        .collect();
     ui.set_source_items(ModelRc::new(VecModel::from(items)));
 }
