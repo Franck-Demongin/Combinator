@@ -2,33 +2,41 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  verify:
+    name: verify (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - name: Install Linux dependencies
+      - name: Install Slint Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            libfontconfig1-dev libfreetype6-dev libx11-dev \
-            libxkbcommon-dev libwayland-dev desktop-file-utils \
-            poppler-utils
+          PACKAGES=(build-essential pkg-config libx11-dev libxkbcommon-dev libwayland-dev desktop-file-utils poppler-utils)
+          if apt-cache show libfontconfig-dev >/dev/null 2>&1; then PACKAGES+=(libfontconfig-dev); else PACKAGES+=(libfontconfig1-dev); fi
+          if apt-cache show libfreetype-dev >/dev/null 2>&1; then PACKAGES+=(libfreetype-dev); else PACKAGES+=(libfreetype6-dev); fi
+          if apt-cache show libgl-dev >/dev/null 2>&1; then PACKAGES+=(libgl-dev); else PACKAGES+=(libgl1-mesa-dev); fi
+          sudo apt-get install -y "${PACKAGES[@]}"
 
-      - name: Install Windows dependencies
+      - name: Install Poppler (Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
@@ -38,17 +46,25 @@ jobs:
       - name: Verify Poppler
         run: pdftoppm -v
 
-      - name: Cargo fmt
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2.9.3
+        with:
+          key: ${{ runner.os }}-cargo
+
+      - name: Check formatting
         run: cargo fmt --check
-
-      - name: Cargo test
-        run: cargo test --workspace --locked
-
-      - name: Cargo build CLI
-        run: cargo build --locked -p combinator-cli
-
-      - name: Cargo build GUI
-        run: cargo build --locked -p combinator-cli --features gui
 
       - name: Clippy
         run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+      - name: Build
+        run: cargo build --workspace --all-features --locked
+
+      - name: Tests
+        run: cargo test --workspace --all-features --locked
