@@ -11,5 +11,3 @@ magick "$OUTPUT_DIR/combinator-256.png" \
   \( "$OUTPUT_DIR/combinator-32.png" \) \
   \( "$OUTPUT_DIR/combinator-16.png" \) \
   "$OUTPUT_DIR/combinator.ico"
-EOF
-chmod +x assets/icons/generate.sh
