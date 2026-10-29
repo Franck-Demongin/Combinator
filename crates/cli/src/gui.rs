@@ -35,6 +35,8 @@ pub fn run() -> Result<()> {
 
     let toaster = Toaster::install(&ui);
 
+    ui.set_output_path(default_output_path().display().to_string().into());
+
     let report_dialog = Rc::new(RefCell::new(None::<ReportDialog>));
     let pending_drop_target = Rc::new(RefCell::new(None::<usize>));
 
@@ -241,14 +243,16 @@ fn register_output_actions(
         if ui.get_busy() {
             return;
         }
-        let path = PathBuf::from(ui.get_output_path().as_str());
-        if path.as_os_str().is_empty() {
+        let output_path = ui.get_output_path();
+        let raw = output_path.as_str();
+        if raw.trim().is_empty() {
             open_file_toaster.show(
                 "Aucun fichier de sortie selectionne.".to_owned(),
                 ToastLevel::Warning,
             );
             return;
         }
+        let path = resolve_output_path(raw);
         if let Err(error) = open_path(&path) {
             open_file_toaster.show(error.to_string(), ToastLevel::Error);
         }
@@ -263,15 +267,16 @@ fn register_output_actions(
         if ui.get_busy() {
             return;
         }
-        let path = PathBuf::from(ui.get_output_path().as_str());
-        if path.as_os_str().is_empty() {
+        let output_path = ui.get_output_path();
+        let raw = output_path.as_str();
+        if raw.trim().is_empty() {
             open_folder_toaster.show(
                 "Aucun fichier de sortie selectionne.".to_owned(),
                 ToastLevel::Warning,
             );
             return;
         }
-        let folder = output_folder(&path);
+        let folder = output_folder(Path::new(raw));
         if let Err(error) = open_path(&folder) {
             open_folder_toaster.show(error.to_string(), ToastLevel::Error);
         }
@@ -342,7 +347,7 @@ fn register_generation(ui: &MainWindow, toaster: Toaster) {
             return;
         }
 
-        let output = PathBuf::from(ui.get_output_path().as_str());
+        let output = resolve_output_path(ui.get_output_path().as_str());
         let force = ui.get_force_overwrite();
 
         ui.set_busy(true);
@@ -452,16 +457,65 @@ fn schedule_generation_result(
 }
 
 fn output_folder(path: &Path) -> PathBuf {
-    let resolved = std::fs::canonicalize(path).unwrap_or_else(|_| {
-        if path.is_relative() {
-            std::env::current_dir().unwrap_or_default().join(path)
+    let candidate = resolve_output_path(path.to_string_lossy().as_ref());
+    let resolved = std::fs::canonicalize(&candidate).unwrap_or_else(|_| {
+        if candidate.is_relative() {
+            std::env::current_dir().unwrap_or_default().join(&candidate)
         } else {
-            path.to_path_buf()
+            candidate.clone()
         }
     });
     match resolved.parent() {
         Some(parent) if !parent.as_os_str().is_empty() => parent.to_path_buf(),
         _ => resolved,
+    }
+}
+
+fn desktop_dir() -> PathBuf {
+    if let Ok(home) = std::env::var("HOME") {
+        let desktop = PathBuf::from(home).join("Desktop");
+        if desktop.is_dir() {
+            return desktop;
+        }
+    }
+    if let Ok(profile) = std::env::var("USERPROFILE") {
+        let desktop = PathBuf::from(profile).join("Desktop");
+        if desktop.is_dir() {
+            return desktop;
+        }
+    }
+    if let (Ok(drive), Ok(homepath)) = (std::env::var("HOMEDRIVE"), std::env::var("HOMEPATH")) {
+        let desktop = PathBuf::from(format!("{drive}{homepath}")).join("Desktop");
+        if desktop.is_dir() {
+            return desktop;
+        }
+    }
+    if let Ok(desktop) = std::env::var("XDG_DESKTOP_DIR") {
+        let desktop = PathBuf::from(desktop);
+        if desktop.is_dir() {
+            return desktop;
+        }
+    }
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+}
+
+fn default_output_path() -> PathBuf {
+    desktop_dir().join("combinator.pdf")
+}
+
+fn resolve_output_path(raw: &str) -> PathBuf {
+    let path = PathBuf::from(raw);
+    if raw.trim().is_empty() {
+        return default_output_path();
+    }
+    if path
+        .parent()
+        .map(|parent| parent.as_os_str().is_empty())
+        .unwrap_or(true)
+    {
+        desktop_dir().join(path.file_name().unwrap_or_default())
+    } else {
+        path
     }
 }
 
