@@ -25,7 +25,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libfontconfig1-dev libfreetype6-dev libx11-dev \
-            libxkbcommon-dev libwayland-dev desktop-file-utils
+            libxkbcommon-dev libwayland-dev desktop-file-utils \
+            poppler-utils
+
+      - name: Install Windows dependencies
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          choco install -y poppler
+          refreshenv
+
+      - name: Verify Poppler
+        run: pdftoppm -v
 
       - name: Cargo fmt
         run: cargo fmt --check

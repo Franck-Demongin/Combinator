@@ -38,8 +38,12 @@ A4 PDF. An optional JSON composition report can be written with `--report`.
 ```sh
 sudo apt-get install -y \
   libfontconfig1-dev libfreetype6-dev libx11-dev \
-  libxkbcommon-dev libwayland-dev desktop-file-utils
+  libxkbcommon-dev libwayland-dev desktop-file-utils \
+  poppler-utils
 ```
+
+`poppler-utils` provides `pdftoppm`, used to rasterize PDF source pages.
+Equivalent Windows installations must also provide `pdftoppm`.
 
 ## Linux installation
 
