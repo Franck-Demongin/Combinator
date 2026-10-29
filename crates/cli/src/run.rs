@@ -162,8 +162,8 @@ pub fn run() -> Result<()> {
             json!({
                 "path": raster.path,
                 "page": raster.page_index,
-                "width_mm": dims.width_mm,
-                "height_mm": dims.height_mm,
+                "width_mm": (dims.width_mm * 100.0).round() / 100.0,
+                "height_mm": (dims.height_mm * 100.0).round() / 100.0,
             })
         })
         .collect();
@@ -173,11 +173,12 @@ pub fn run() -> Result<()> {
     if let Some(report_path) = cli.report.clone() {
         let report_output = resolve_report_output(&Some(report_path), &files);
         validate_output(&report_output, &files, cli.force)?;
-        let envelope = json!({
+        let mut envelope = json!({
             "version": 1,
             "sources": source_report,
             "composition": report,
         });
+        round_report_json(&mut envelope);
         let text =
             serde_json::to_string_pretty(&envelope).context("serialisation du rapport JSON")?;
         fs::write(&report_output, text)
@@ -643,6 +644,30 @@ fn composite_image_to_rgb(image: DynamicImage) -> RgbImage {
     RgbImage::from_raw(width, height, output).expect("rgb buffer size matched source dimensions")
 }
 
+fn round_report_json(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Number(_) => {
+            if let Some(number) = value.as_f64() {
+                let rounded = (number * 100.0).round() / 100.0;
+                if let Some(rounded_number) = serde_json::Number::from_f64(rounded) {
+                    *value = serde_json::Value::Number(rounded_number);
+                }
+            }
+        }
+        serde_json::Value::Array(values) => {
+            for entry in values {
+                round_report_json(entry);
+            }
+        }
+        serde_json::Value::Object(values) => {
+            for entry in values.values_mut() {
+                round_report_json(entry);
+            }
+        }
+        _ => {}
+    }
+}
+
 fn image_dpi(bytes: &[u8]) -> (f32, f32) {
     if bytes.starts_with(&[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]) {
         png_dpi(bytes).unwrap_or((300.0, 300.0))
@@ -782,8 +807,8 @@ pub fn generate_collected(
             json!({
                 "path": raster.path,
                 "page": raster.page_index,
-                "width_mm": dims.width_mm,
-                "height_mm": dims.height_mm,
+                "width_mm": (dims.width_mm * 100.0).round() / 100.0,
+                "height_mm": (dims.height_mm * 100.0).round() / 100.0,
             })
         })
         .collect();
@@ -801,11 +826,12 @@ pub fn generate_collected(
             fraction: 0.90,
         });
         validate_output(report_path, files, force)?;
-        let envelope = json!({
+        let mut envelope = json!({
             "version": 1,
             "sources": source_report,
             "composition": composition_report,
         });
+        round_report_json(&mut envelope);
         let text =
             serde_json::to_string_pretty(&envelope).context("serialisation du rapport JSON")?;
         fs::write(report_path, text)
@@ -823,7 +849,7 @@ pub fn generate_collected(
         format!("Sources : {}", rasters.len()),
         format!("Planches : {}", composition_report.board_count),
         format!(
-            "Marge : {} mm ; slot : {} x {} mm ; espace entre slots : {} mm",
+            "Marge : {:.2} mm ; slot : {:.2} x {:.2} mm ; espace entre slots : {:.2} mm",
             composition_report.print_margin_mm,
             composition_report.slot_width_mm,
             composition_report.slot_height_mm,
@@ -839,7 +865,7 @@ pub fn generate_collected(
                 FitStatus::ScaledDown => "reduit pour tenir dans le slot",
             };
             report_lines.push(format!(
-                "  - source {} : {} x {} mm -> {} x {} mm, rotation {}°, échelle {:.3}, {}",
+                "  - source {} : {:.2} x {:.2} mm -> {:.2} x {:.2} mm, rotation {}°, échelle {:.3}, {}",
                 placement.source_index + 1,
                 placement.source_width_mm,
                 placement.source_height_mm,
