@@ -1,6 +1,6 @@
 use assert_cmd::Command;
 use image::{ImageBuffer, Rgb};
-use lopdf::{Object, dictionary};
+use lopdf::Document;
 use std::fs;
 use tempfile::TempDir;
 
@@ -14,6 +14,7 @@ fn make_png(path: &std::path::Path, width: u32, height: u32) {
 }
 
 fn make_pdf(path: &std::path::Path, width: i64, height: i64) {
+    use lopdf::{Object, dictionary};
     let mut document = lopdf::Document::with_version("1.5");
     let pages_id = document.new_object_id();
     let page_id = document.new_object_id();
@@ -55,7 +56,7 @@ fn help_succeeds() {
 }
 
 #[test]
-fn directory_is_single_level_and_writes_json() {
+fn directory_is_single_level_and_writes_pdf() {
     let temp = TempDir::new().expect("temp");
     make_png(&temp.path().join("b.png"), 100, 50);
     make_png(&temp.path().join("a.png"), 10, 20);
@@ -64,7 +65,12 @@ fn directory_is_single_level_and_writes_json() {
     make_png(&temp.path().join("nested").join("ignored.png"), 1, 1);
     fs::write(temp.path().join("ignore.txt"), "x").expect("txt");
 
-    let output = temp.path().join("report.json");
+    let output = temp
+        .path()
+        .parent()
+        .unwrap()
+        .join("combinator-test-report.pdf");
+    let _ = fs::remove_file(&output);
     combinator()
         .arg("--dir")
         .arg(temp.path())
@@ -73,22 +79,25 @@ fn directory_is_single_level_and_writes_json() {
         .assert()
         .success();
 
-    let value: serde_json::Value =
-        serde_json::from_str(&fs::read_to_string(&output).expect("read")).expect("json");
-    let sources = value["sources"].as_array().expect("sources");
-    assert_eq!(sources.len(), 3, "nested directory and txt must be ignored");
-    let first_paths: Vec<_> = sources
-        .iter()
-        .map(|item| item["path"].as_str().unwrap())
-        .collect();
-    assert!(first_paths.iter().all(|path| !path.contains("nested")));
+    let bytes = fs::read(&output).expect("read pdf");
+    assert!(bytes.starts_with(b"%PDF"), "output should be a PDF");
+    let document = Document::load(&output).expect("valid pdf");
+    assert_eq!(
+        document.get_pages().len(),
+        2,
+        "3 sources should produce 2 A4 boards"
+    );
 }
 
 #[test]
 fn existing_output_requires_force() {
     let temp = TempDir::new().expect("temp");
     make_png(&temp.path().join("a.png"), 10, 10);
-    let output = temp.path().join("report.json");
+    let output = temp
+        .path()
+        .parent()
+        .unwrap()
+        .join("combinator-force-report.pdf");
     fs::write(&output, "existing").expect("existing");
 
     combinator()

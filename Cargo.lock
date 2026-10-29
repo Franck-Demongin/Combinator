@@ -959,6 +959,7 @@ dependencies = [
  "assert_cmd",
  "clap",
  "combinator-core",
+ "heic-rs",
  "image",
  "lopdf",
  "natord",

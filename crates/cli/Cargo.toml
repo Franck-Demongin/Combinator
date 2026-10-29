@@ -26,9 +26,13 @@ slint-ui = ["dep:slint", "dep:rfd", "dep:slint-build"]
 combinator-core.workspace = true
 anyhow.workspace = true
 clap.workspace = true
+heic-rs.workspace = true
+image.workspace = true
+lopdf.workspace = true
 natord.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tempfile = "3"
 slint = { workspace = true, optional = true }
 rfd = { version = "0.15", default-features = false, features = ["xdg-portal", "tokio"], optional = true }
 
