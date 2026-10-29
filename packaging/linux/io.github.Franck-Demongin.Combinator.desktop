@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Combinator
+Comment=Composition automatique de planches PDF a partir de sources
+Exec=combinator-gui
+Icon=io.github.Franck-Demongin.Combinator
+Terminal=false
+Categories=Graphics;Publishing;
+StartupWMClass=io.github.Franck-Demongin.Combinator
