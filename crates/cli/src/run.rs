@@ -121,6 +121,15 @@ pub fn run() -> Result<()> {
         bail!("aucun fichier source supporte trouve");
     }
 
+    if !cli.dry_run {
+        let output = resolve_pdf_output(&cli.output)?;
+        validate_output(&output, &files, cli.force)?;
+        if let Some(report_path) = &cli.report {
+            let report_output = resolve_report_output(&Some(report_path.clone()), &files);
+            validate_output(&report_output, &files, cli.force)?;
+        }
+    }
+
     let mut rasters: Vec<Raster> = Vec::new();
     for file in &files {
         match file_extension_lower(file).as_str() {
@@ -766,6 +775,13 @@ pub fn generate_collected(
         bail!("aucun fichier source supporte trouve");
     }
 
+    // Validate destinations before reading or rasterizing any source so an
+    // existing output stops generation immediately without processing inputs.
+    validate_output(output, files, force)?;
+    if let Some(report_path) = report {
+        validate_output(report_path, files, force)?;
+    }
+
     progress(ProgressUpdate {
         message: "Lecture des sources".to_owned(),
         fraction: 0.03,
@@ -798,8 +814,6 @@ pub fn generate_collected(
         fraction: 0.55,
     });
 
-    validate_output(output, files, force)?;
-
     let source_report: Vec<_> = rasters
         .iter()
         .map(|raster| {
@@ -825,7 +839,6 @@ pub fn generate_collected(
             message: "Ecriture du rapport JSON".to_owned(),
             fraction: 0.90,
         });
-        validate_output(report_path, files, force)?;
         let mut envelope = json!({
             "version": 1,
             "sources": source_report,
