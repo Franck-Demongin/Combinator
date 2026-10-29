@@ -193,7 +193,7 @@ fn register_source_actions(
                     let src = source as usize;
                     if src < current.len() && target < current.len() && src != target {
                         let item = current.remove(src);
-                        let insert_at = if target > src { target - 1 } else { target };
+                        let insert_at = target;
                         if insert_at <= current.len() {
                             current.insert(insert_at, item);
                         }
