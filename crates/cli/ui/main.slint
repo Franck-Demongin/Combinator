@@ -81,18 +81,27 @@ export component MainWindow inherits Window {
 
             Button {
                 text: "Ajouter des fichiers";
+                icon: @image-url("../../../assets/icons/ui/file-open.svg");
+                icon-size: 16px;
+                colorize-icon: true;
                 enabled: !root.busy;
                 clicked => { root.add-files(); }
             }
 
             Button {
                 text: "Ajouter un dossier";
+                icon: @image-url("../../../assets/icons/ui/folder-open.svg");
+                icon-size: 16px;
+                colorize-icon: true;
                 enabled: !root.busy;
                 clicked => { root.add-directory(); }
             }
 
             Button {
                 text: "Vider";
+                icon: @image-url("../../../assets/icons/ui/delete.svg");
+                icon-size: 16px;
+                colorize-icon: true;
                 enabled: !root.busy;
                 clicked => { root.clear-sources(); }
             }
@@ -135,6 +144,9 @@ export component MainWindow inherits Window {
 
             Button {
                 text: "Parcourir";
+                icon: @image-url("../../../assets/icons/ui/folder-open.svg");
+                icon-size: 16px;
+                colorize-icon: true;
                 enabled: !root.busy;
                 clicked => { root.choose-output(); }
             }
@@ -166,6 +178,9 @@ export component MainWindow inherits Window {
 
             Button {
                 text: "Rapport";
+                icon: @image-url("../../../assets/icons/ui/document-properties.svg");
+                icon-size: 16px;
+                colorize-icon: true;
                 visible: root.output-ready;
                 enabled: root.output-ready;
                 clicked => { root.open-report(); }
@@ -173,6 +188,9 @@ export component MainWindow inherits Window {
 
             Button {
                 text: "Ouvrir le fichier";
+                icon: @image-url("../../../assets/icons/ui/file-open.svg");
+                icon-size: 16px;
+                colorize-icon: true;
                 visible: root.output-ready;
                 enabled: root.output-ready;
                 clicked => { root.open-output-file(); }
@@ -180,6 +198,9 @@ export component MainWindow inherits Window {
 
             Button {
                 text: "Ouvrir le dossier";
+                icon: @image-url("../../../assets/icons/ui/folder-open.svg");
+                icon-size: 16px;
+                colorize-icon: true;
                 visible: root.output-ready;
                 enabled: root.output-ready;
                 clicked => { root.open-output-folder(); }
@@ -191,6 +212,9 @@ export component MainWindow inherits Window {
 
             Button {
                 text: "Generer";
+                icon: @image-url("../../../assets/icons/ui/document-save.svg");
+                icon-size: 16px;
+                colorize-icon: true;
                 primary: true;
                 enabled: !root.busy && root.source-items.length > 0;
                 clicked => { root.generate(); }
