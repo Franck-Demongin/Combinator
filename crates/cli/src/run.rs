@@ -68,6 +68,19 @@ impl Raster {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct ProgressUpdate {
+    pub message: String,
+    pub fraction: f32,
+}
+
+#[derive(Debug)]
+pub struct GenerationSummary {
+    pub source_count: usize,
+    pub board_count: usize,
+    pub output: PathBuf,
+}
+
 pub fn run() -> Result<()> {
     let cli = Cli::parse();
 
@@ -694,4 +707,126 @@ fn expand_directory(path: &Path) -> Result<Vec<PathBuf>, SourceError> {
 
 fn is_supported_path(path: &Path) -> bool {
     combinator_core::is_supported_path(path)
+}
+
+pub fn generate_collected(
+    files: &[PathBuf],
+    output: &Path,
+    report: Option<&Path>,
+    force: bool,
+    mut progress: impl FnMut(ProgressUpdate),
+) -> Result<GenerationSummary> {
+    if files.is_empty() {
+        bail!("aucun fichier source supporte trouve");
+    }
+
+    progress(ProgressUpdate {
+        message: "Lecture des sources".to_owned(),
+        fraction: 0.03,
+    });
+
+    let mut rasters: Vec<Raster> = Vec::new();
+    for (index, file) in files.iter().enumerate() {
+        match file_extension_lower(file).as_str() {
+            "png" | "jpg" | "jpeg" => rasters.push(raster_from_image(file)?),
+            "heic" | "heif" => rasters.push(raster_from_heic(file)?),
+            "pdf" => rasters.extend(raster_from_pdf(file)?),
+            _ => bail!("format non supporte : {}", file.display()),
+        }
+        let fraction = 0.03 + 0.45 * (index + 1) as f32 / files.len() as f32;
+        progress(ProgressUpdate {
+            message: format!("Source lue : {}", file.display()),
+            fraction: fraction.min(0.48),
+        });
+    }
+
+    if rasters.is_empty() {
+        bail!("aucune source valide n'a pu etre lue");
+    }
+
+    let dimensions: Vec<SourceDimensions> = rasters.iter().map(Raster::dimensions_mm).collect();
+    let composition_report = compose(&dimensions);
+
+    progress(ProgressUpdate {
+        message: "Composition des planches".to_owned(),
+        fraction: 0.55,
+    });
+
+    validate_output(output, files, force)?;
+
+    let source_report: Vec<_> = rasters
+        .iter()
+        .map(|raster| {
+            let dims = raster.dimensions_mm();
+            json!({
+                "path": raster.path,
+                "page": raster.page_index,
+                "width_mm": dims.width_mm,
+                "height_mm": dims.height_mm,
+            })
+        })
+        .collect();
+
+    progress(ProgressUpdate {
+        message: "Generation du PDF".to_owned(),
+        fraction: 0.70,
+    });
+
+    write_pdf(output, &rasters, &composition_report)?;
+
+    if let Some(report_path) = report {
+        progress(ProgressUpdate {
+            message: "Ecriture du rapport JSON".to_owned(),
+            fraction: 0.90,
+        });
+        validate_output(report_path, files, force)?;
+        let envelope = json!({
+            "version": 1,
+            "sources": source_report,
+            "composition": composition_report,
+        });
+        let text =
+            serde_json::to_string_pretty(&envelope).context("serialisation du rapport JSON")?;
+        fs::write(report_path, text)
+            .with_context(|| format!("ecriture du rapport {}", report_path.display()))?;
+    }
+
+    progress(ProgressUpdate {
+        message: "Termine".to_owned(),
+        fraction: 1.0,
+    });
+
+    Ok(GenerationSummary {
+        source_count: rasters.len(),
+        board_count: composition_report.board_count,
+        output: output.to_path_buf(),
+    })
+}
+
+pub fn collect_source_files(inputs: &[PathBuf]) -> Result<Vec<PathBuf>> {
+    let mut files: Vec<PathBuf> = Vec::new();
+    for path in inputs {
+        if path.is_dir() {
+            files.extend(expand_directory(path).map_err(source_error_to_anyhow)?);
+        } else if path.is_file() {
+            if !is_supported_path(path) {
+                bail!("format non supporte : {}", path.display());
+            }
+            files.push(path.clone());
+        } else {
+            bail!("chemin introuvable : {}", path.display());
+        }
+    }
+
+    files.sort_by(|left, right| {
+        natord::compare(
+            left.to_string_lossy().as_ref(),
+            right.to_string_lossy().as_ref(),
+        )
+    });
+
+    if files.is_empty() {
+        bail!("aucun fichier source supporte trouve");
+    }
+    Ok(files)
 }
