@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn rotates_to_improve_fit() {
-        let report = compose(&[SourceDimensions::new(300.0, 100.0).unwrap()]);
+        let report = compose(&[SourceDimensions::new(200.0, 100.0).unwrap()]);
         let placement = &report.boards[0].placements[0];
         assert_eq!(placement.rotation, Rotation::Degrees90);
         assert!(placement.scale_factor > 0.9);

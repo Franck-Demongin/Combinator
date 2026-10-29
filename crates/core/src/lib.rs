@@ -4,8 +4,8 @@ pub mod composition;
 pub mod error;
 pub mod sources;
 
-pub const A4_WIDTH_MM: f64 = 210.0;
-pub const A4_HEIGHT_MM: f64 = 297.0;
+pub const A4_WIDTH_MM: f64 = 297.0;
+pub const A4_HEIGHT_MM: f64 = 210.0;
 pub const PRINT_MARGIN_MM: f64 = 5.0;
 pub const PAIRS_PER_BOARD: usize = 2;
 pub const SOURCES_PER_BOARD: usize = 2;

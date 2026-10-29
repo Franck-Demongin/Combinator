@@ -133,12 +133,12 @@ pub fn run() -> Result<()> {
         }
         println!(
             "Sortie prevue : {}",
-            resolve_pdf_output(&cli.output).display()
+            resolve_pdf_output(&cli.output)?.display()
         );
         return Ok(());
     }
 
-    let output = resolve_pdf_output(&cli.output);
+    let output = resolve_pdf_output(&cli.output)?;
     validate_output(&output, &files, cli.force)?;
 
     let source_report: Vec<_> = rasters
@@ -182,24 +182,36 @@ pub fn run() -> Result<()> {
     Ok(())
 }
 
-fn resolve_pdf_output(output: &Option<PathBuf>) -> PathBuf {
+fn resolve_pdf_output(output: &Option<PathBuf>) -> Result<PathBuf> {
     let path = output
         .clone()
         .unwrap_or_else(|| PathBuf::from("combinator.pdf"));
     if path.is_dir() {
-        path.join("combinator.pdf")
-    } else {
-        let has_extension = path
-            .extension()
-            .and_then(|ext| ext.to_str())
-            .map(|ext| !ext.is_empty())
-            .unwrap_or(false);
-        if has_extension {
-            path
-        } else {
-            path.with_extension("pdf")
-        }
+        return Ok(path.join("combinator.pdf"));
     }
+
+    let has_extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| !ext.is_empty())
+        .unwrap_or(false);
+    if !has_extension {
+        return Ok(path.with_extension("pdf"));
+    }
+
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or_default()
+        .to_lowercase();
+    if extension != "pdf" {
+        bail!(
+            "la sortie principale doit etre un PDF (.pdf), pas .{} ; utilisez --report pour un rapport JSON",
+            extension
+        );
+    }
+
+    Ok(path)
 }
 
 fn resolve_report_output(output: &Option<PathBuf>, _files: &[PathBuf]) -> PathBuf {
