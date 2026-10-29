@@ -1,11 +1,8 @@
 #![cfg_attr(all(windows, feature = "slint-ui"), windows_subsystem = "windows")]
 
 #[cfg(feature = "slint-ui")]
-mod gui;
-
-#[cfg(feature = "slint-ui")]
 fn main() {
-    if let Err(error) = gui::run() {
+    if let Err(error) = combinator_cli::gui::run() {
         eprintln!("Slint error: {error}");
         std::process::exit(1);
     }

@@ -1,6 +1,14 @@
-import { Button, HorizontalBox, VerticalBox } from "std-widgets.slint";
+import { Button, CheckBox, HorizontalBox, LineEdit, ListView, Palette, ProgressIndicator, VerticalBox } from "std-widgets.slint";
 import { ToastOverlay } from "toast/toast.slint";
 export { ToastTiming, ToastState } from "toast/toast.slint";
+
+global Layout {
+    out property <length> padding: 16px;
+    out property <length> spacing: 12px;
+    out property <length> gap: 8px;
+    out property <length> radius: 6px;
+    out property <length> row-height: 24px;
+}
 
 export component MainWindow inherits Window {
     title: "Combinator";
@@ -10,45 +18,161 @@ export component MainWindow inherits Window {
     preferred-width: 860px;
     preferred-height: 520px;
 
+    in-out property <[string]> source-items;
+    in-out property <string> output-path: "combinator.pdf";
+    in-out property <string> report-path: "";
+    in-out property <bool> force-overwrite: false;
+    in-out property <bool> report-enabled: false;
+    in-out property <bool> busy: false;
+    in-out property <float> progress: 0.0;
+    in-out property <string> status-text: "Pret.";
+
     callback show-success();
     callback show-warning();
     callback show-error();
+    callback add-files();
+    callback add-directory();
+    callback clear-sources();
+    callback choose-output();
+    callback choose-report();
+    callback generate();
 
     VerticalBox {
-        padding: 16px;
-        spacing: 12px;
-        alignment: center;
+        padding: Layout.padding;
+        spacing: Layout.spacing;
 
         Text {
-            text: "Hello World!";
-            font-size: 24px;
+            text: "Combinator";
+            font-size: 20px;
             font-weight: 700;
-            horizontal-alignment: center;
         }
 
         HorizontalBox {
-            spacing: 8px;
-            alignment: center;
+            spacing: Layout.gap;
 
             Button {
-                text: "Toast succès";
-                clicked => { root.show-success(); }
+                text: "Ajouter des fichiers";
+                enabled: !root.busy;
+                clicked => { root.add-files(); }
             }
 
             Button {
-                text: "Toast avertissement";
-                clicked => { root.show-warning(); }
+                text: "Ajouter un dossier";
+                enabled: !root.busy;
+                clicked => { root.add-directory(); }
             }
 
             Button {
-                text: "Toast erreur";
-                clicked => { root.show-error(); }
+                text: "Vider";
+                enabled: !root.busy;
+                clicked => { root.clear-sources(); }
+            }
+        }
+
+        Text {
+            text: "Sources";
+            font-weight: 600;
+        }
+
+        Rectangle {
+            border-color: Palette.border;
+            border-width: 1px;
+            border-radius: Layout.radius;
+            vertical-stretch: 1;
+
+            ListView {
+                for item in root.source-items : Text {
+                    text: item;
+                    height: Layout.row-height;
+                    width: parent.width;
+                    vertical-alignment: center;
+                }
+            }
+        }
+
+        HorizontalBox {
+            spacing: Layout.gap;
+
+            Text {
+                text: "Sortie";
+                vertical-alignment: center;
+            }
+
+            LineEdit {
+                horizontal-stretch: 1;
+                text <=> root.output-path;
+                enabled: !root.busy;
+            }
+
+            Button {
+                text: "Parcourir";
+                enabled: !root.busy;
+                clicked => { root.choose-output(); }
+            }
+        }
+
+        HorizontalBox {
+            spacing: Layout.gap;
+
+            CheckBox {
+                text: "Forcer l'ecrasement";
+                checked <=> root.force-overwrite;
+                enabled: !root.busy;
+            }
+
+            CheckBox {
+                text: "Rapport";
+                checked <=> root.report-enabled;
+                enabled: !root.busy;
+            }
+        }
+
+        HorizontalBox {
+            spacing: Layout.gap;
+
+            Text {
+                text: "Rapport";
+                vertical-alignment: center;
+            }
+
+            LineEdit {
+                horizontal-stretch: 1;
+                text <=> root.report-path;
+                enabled: !root.busy && root.report-enabled;
+            }
+
+            Button {
+                text: "Parcourir";
+                enabled: !root.busy && root.report-enabled;
+                clicked => { root.choose-report(); }
+            }
+        }
+
+        ProgressIndicator {
+            height: 8px;
+            progress: root.progress;
+            indeterminate: root.busy;
+        }
+
+        Text {
+            text: root.status-text;
+            wrap: word-wrap;
+        }
+
+        HorizontalBox {
+            alignment: end;
+
+            Button {
+                text: "Generer";
+                primary: true;
+                enabled: !root.busy;
+                clicked => { root.generate(); }
             }
         }
     }
 
     ToastOverlay {
         available-width: root.width;
-        spacing: 8px;
+        spacing: Layout.gap;
     }
 }
