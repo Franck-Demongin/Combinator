@@ -397,7 +397,17 @@ fn schedule_generation_result(
                     ui.set_busy(false);
                     match result {
                         Ok(summary) => {
-                            ui.set_output_path(summary.output.display().to_string().into());
+                            let output_path = std::fs::canonicalize(&summary.output)
+                                .unwrap_or_else(|_| {
+                                    if summary.output.is_relative() {
+                                        std::env::current_dir()
+                                            .unwrap_or_default()
+                                            .join(&summary.output)
+                                    } else {
+                                        summary.output.clone()
+                                    }
+                                });
+                            ui.set_output_path(output_path.display().to_string().into());
                             ui.set_report_text(summary.report_text.clone().into());
                             ui.set_progress(1.0);
                             ui.set_status_text(
@@ -442,16 +452,16 @@ fn schedule_generation_result(
 }
 
 fn output_folder(path: &Path) -> PathBuf {
-    let parent = match path.parent() {
+    let resolved = std::fs::canonicalize(path).unwrap_or_else(|_| {
+        if path.is_relative() {
+            std::env::current_dir().unwrap_or_default().join(path)
+        } else {
+            path.to_path_buf()
+        }
+    });
+    match resolved.parent() {
         Some(parent) if !parent.as_os_str().is_empty() => parent.to_path_buf(),
-        _ => PathBuf::from("."),
-    };
-    if parent.is_relative() {
-        std::env::current_dir()
-            .unwrap_or_else(|_| PathBuf::from("."))
-            .join(parent)
-    } else {
-        parent
+        _ => resolved,
     }
 }
 
