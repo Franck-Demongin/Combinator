@@ -4,8 +4,8 @@
 
 | ID | Titre | Statut | Owner | Dépendances |
 |---|---|---|---|---|
-| — | *Aucun ticket encore créé* | — | — | — |
 | TICKET-000 | Bootstrap de la documentation Workflow pour l'existant | done | analyst-architect | — |
+| TICKET-001 | Retrait du préfixe verbatim Windows du chemin de sortie GUI | done | developer | — |
 
 ## Légende
 
