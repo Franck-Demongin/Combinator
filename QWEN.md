@@ -38,3 +38,7 @@
 - `Cargo.lock` is committed.
 - CI and release builds use `--locked`.
 EOF
+## Ancre locale du projet (générée par le scaffold)
+- ROOT_DIR = /home/franck/Dev/Rust/combinator
+- Toute lecture ou écriture effectuée par Qwen Code doit utiliser ROOT_DIR comme racine absolue.
+- Ne jamais déduire un chemin (/tmp/<nom>, nom de projet, slug, profil) à la place de ROOT_DIR.
