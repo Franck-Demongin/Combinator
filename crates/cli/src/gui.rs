@@ -444,16 +444,7 @@ fn schedule_generation_result(
                     ui.set_busy(false);
                     match result {
                         Ok(summary) => {
-                            let output_path = std::fs::canonicalize(&summary.output)
-                                .unwrap_or_else(|_| {
-                                    if summary.output.is_relative() {
-                                        std::env::current_dir()
-                                            .unwrap_or_default()
-                                            .join(&summary.output)
-                                    } else {
-                                        summary.output.clone()
-                                    }
-                                });
+                            let output_path = absolute_output_path(&summary.output);
                             ui.set_output_path(output_path.display().to_string().into());
                             ui.set_report_text(summary.report_text.clone().into());
                             ui.set_progress(1.0);
@@ -502,16 +493,32 @@ fn schedule_generation_result(
 
 fn output_folder(path: &Path) -> PathBuf {
     let candidate = resolve_output_path(path.to_string_lossy().as_ref());
-    let resolved = std::fs::canonicalize(&candidate).unwrap_or_else(|_| {
-        if candidate.is_relative() {
-            std::env::current_dir().unwrap_or_default().join(&candidate)
-        } else {
-            candidate.clone()
-        }
-    });
+    let resolved = absolute_output_path(&candidate);
     match resolved.parent() {
         Some(parent) if !parent.as_os_str().is_empty() => parent.to_path_buf(),
         _ => resolved,
+    }
+}
+
+fn absolute_output_path(path: &Path) -> PathBuf {
+    let resolved = std::fs::canonicalize(path).unwrap_or_else(|_| {
+        if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            std::env::current_dir().unwrap_or_default().join(path)
+        }
+    });
+    strip_windows_verbatim_prefix(resolved)
+}
+
+fn strip_windows_verbatim_prefix(path: PathBuf) -> PathBuf {
+    let text = path.to_string_lossy();
+    if let Some(rest) = text.strip_prefix(r"\\?\UNC\") {
+        PathBuf::from(format!(r"\\{}", rest))
+    } else if let Some(rest) = text.strip_prefix(r"\\?\") {
+        PathBuf::from(rest)
+    } else {
+        path
     }
 }
 
@@ -616,6 +623,7 @@ fn resolve_output_path(raw: &str) -> PathBuf {
 }
 
 fn open_path(path: &Path) -> Result<()> {
+    let path = strip_windows_verbatim_prefix(path.to_path_buf());
     let command = if cfg!(target_os = "windows") {
         "cmd"
     } else if cfg!(target_os = "macos") {
@@ -626,9 +634,9 @@ fn open_path(path: &Path) -> Result<()> {
 
     let mut process = Command::new(command);
     if cfg!(target_os = "windows") {
-        process.args(["/C", "start", ""]).arg(path);
+        process.args(["/C", "start", ""]).arg(&path);
     } else {
-        process.arg(path);
+        process.arg(&path);
     }
 
     let child = process
@@ -713,4 +721,34 @@ fn truncate_path(text: &str, max: usize) -> String {
     let left: String = chars[..left_count].iter().collect();
     let right: String = chars[chars.len() - right_count..].iter().collect();
     format!("{left}...{right}")
+}
+
+#[cfg(test)]
+mod verbatim_path_tests {
+    use super::strip_windows_verbatim_prefix;
+    use std::path::PathBuf;
+
+    #[test]
+    fn strips_local_verbatim_prefix() {
+        assert_eq!(
+            strip_windows_verbatim_prefix(PathBuf::from(r"\\?\D:\Users\test\out.pdf")),
+            PathBuf::from(r"D:\Users\test\out.pdf")
+        );
+    }
+
+    #[test]
+    fn strips_unc_verbatim_prefix() {
+        assert_eq!(
+            strip_windows_verbatim_prefix(PathBuf::from(r"\\?\UNC\server\share\out.pdf")),
+            PathBuf::from(r"\\server\share\out.pdf")
+        );
+    }
+
+    #[test]
+    fn leaves_normal_path_unchanged() {
+        assert_eq!(
+            strip_windows_verbatim_prefix(PathBuf::from(r"D:\Users\test\out.pdf")),
+            PathBuf::from(r"D:\Users\test\out.pdf")
+        );
+    }
 }
